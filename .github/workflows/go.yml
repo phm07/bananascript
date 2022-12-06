@@ -37,4 +37,7 @@ jobs:
       run: GOOS=linux GOARCH=arm64 go build -o build/linux-arm64/bananascript src/main.go
 
     - name: Publish
-      run: mv build/ /var/www/builds/$(date '+%F_%H-%M-%S')
+      run: |
+        dirname="/var/www/builds/$(date '+%F_%H-%M-%S')"
+        mv build/ $dirname
+        ln -sf $dirname /var/www/builds/latest
