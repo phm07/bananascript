@@ -86,6 +86,7 @@ func (parser *Parser) ParseProgram(context *Context) (*Program, []*Error) {
 	}
 
 	parser.doesReturn(context, program)
+	parser.errors = removeDuplicateErrors(parser.errors)
 	return program, parser.errors
 }
 

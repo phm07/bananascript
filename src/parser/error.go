@@ -26,3 +26,18 @@ func (error *Error) PrettyPrint(withSource bool) string {
 	}
 	return result
 }
+
+func removeDuplicateErrors(errors []*Error) []*Error {
+	erroneousTokens := make(map[*token.Token]struct{})
+	newErrors := make([]*Error, 0)
+	exists := struct{}{}
+	for _, err := range errors {
+		errorToken := err.Token
+		_, duplicate := erroneousTokens[errorToken]
+		if !duplicate {
+			newErrors = append(newErrors, err)
+			erroneousTokens[errorToken] = exists
+		}
+	}
+	return newErrors
+}

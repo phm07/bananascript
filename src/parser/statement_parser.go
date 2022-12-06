@@ -28,8 +28,8 @@ func (parser *Parser) parseExpressionStatement(context *Context) *ExpressionStat
 	statement := &ExpressionStatement{}
 	statement.Expression = parser.parseExpression(context, Lowest)
 
-	if !parser.assertNext(token.Semi) {
-		return nil
+	if !isInvalid(statement.Expression) {
+		parser.assertNext(token.Semi)
 	}
 
 	return statement

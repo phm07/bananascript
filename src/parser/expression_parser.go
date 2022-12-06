@@ -85,7 +85,7 @@ func (parser *Parser) parseExpression(context *Context, precedence Precedence) E
 
 	expression := prefixFunction(context)
 
-	for !isInvalid(expression) && parser.peek().Type != token.Semi && precedence < getPrecedence(parser.peek()) {
+	for parser.peek().Type != token.Semi && precedence < getPrecedence(parser.peek()) {
 		infixFunction := parser.infixParseFunctions[parser.peek().Type]
 		if infixFunction == nil {
 			break
