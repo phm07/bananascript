@@ -25,13 +25,13 @@ jobs:
       run: GOOS=windows GOARCH=386 go build -o build/win-386/bananascript.exe src/main.go
       
     - name: Build linux-amd64
-      run: GOOS=linux GOARCH=amd64 go build -o build/win-386/bananascript src/main.go
+      run: GOOS=linux GOARCH=amd64 go build -o build/linux-amd64/bananascript src/main.go
 
     - name: Build linux-386
-      run: GOOS=linux GOARCH=386 go build -o build/win-386/bananascript src/main.go
+      run: GOOS=linux GOARCH=386 go build -o build/linux-386/bananascript src/main.go
       
     - name: Build linux-arm
-      run: GOOS=linux GOARCH=arm go build -o build/win-386/bananascript src/main.go
+      run: GOOS=linux GOARCH=arm go build -o build/linux-arm/bananascript src/main.go
       
     - name: Build linux-arm64
-      run: GOOS=linux GOARCH=arm64 go build -o build/win-386/bananascript src/main.go
+      run: GOOS=linux GOARCH=arm64 go build -o build/linux-arm64/bananascript src/main.go
