@@ -1,0 +1,14 @@
+fn fac(x: number) number {
+    if x <= 1 {
+        return 1;
+    } else {
+        return x * fac(x-1);
+    }
+}
+
+println("" + fac(1));
+println("" + fac(2));
+println("" + fac(3));
+println("" + fac(4));
+println("" + fac(5));
+println("" + fac(6));
