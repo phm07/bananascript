@@ -3,7 +3,7 @@ package parser
 import (
 	"bananascript/src/token"
 	"fmt"
-	"github.com/fatih/color"
+	"github.com/gookit/color"
 )
 
 type Error struct {
@@ -16,7 +16,7 @@ func NewError(token *token.Token, messageFormat string, args ...interface{}) *Er
 }
 
 func (error *Error) PrettyPrint(withSource bool) string {
-	result := color.RedString("Error: %s", error.Message)
+	result := color.FgRed.Sprintf("Error: %s", error.Message)
 	if withSource {
 		result += "\n\tin "
 		if error.Token.File != nil {

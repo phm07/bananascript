@@ -7,7 +7,7 @@ import (
 	"bananascript/src/parser"
 	"bananascript/src/repl"
 	"fmt"
-	"github.com/fatih/color"
+	"github.com/gookit/color"
 	"os"
 )
 
@@ -37,7 +37,7 @@ func runFile(fileName string) {
 			errorStr += "s"
 		}
 		errorStr += ":"
-		fmt.Println(color.RedString(errorStr, len(errors)))
+		fmt.Println(color.FgRed.Sprintf(errorStr, len(errors)))
 		for _, err := range errors {
 			fmt.Println(err.PrettyPrint(true))
 		}
