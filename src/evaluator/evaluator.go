@@ -210,8 +210,8 @@ func evalLetStatement(letStatement *parser.LetStatement, environment *Environmen
 	}
 
 	name := letStatement.Name.Value
-	defined, _ := environment.Define(name, object)
-	return defined
+	environment.Define(name, object)
+	return nil
 }
 
 func evalFunctionDefinitionStatement(funcStatement *parser.FunctionDefinitionStatement, environment *Environment) Object {
