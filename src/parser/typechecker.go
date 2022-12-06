@@ -44,7 +44,7 @@ func (infixExpression *InfixExpression) Type(context *Context) Type {
 	}
 
 	switch infixExpression.Operator {
-	case token.EQ, token.NEQ:
+	case token.EQ, token.NEQ, token.LogicalOr, token.LogicalAnd:
 		return &BoolType{}
 	case token.LT, token.GT, token.LTE, token.GTE:
 		if leftType.ToString() == TypeInt && rightType.ToString() == TypeInt {

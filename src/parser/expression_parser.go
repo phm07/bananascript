@@ -10,6 +10,8 @@ type Precedence int
 const (
 	Lowest Precedence = iota
 	Assignment
+	LogicalOr
+	LogicalAnd
 	Equals
 	Relation
 	Sum
@@ -20,20 +22,22 @@ const (
 )
 
 var precedences = map[token.Type]Precedence{
-	token.Assign:    Assignment,
-	token.EQ:        Equals,
-	token.NEQ:       Equals,
-	token.LT:        Relation,
-	token.GT:        Relation,
-	token.LTE:       Relation,
-	token.GTE:       Relation,
-	token.Plus:      Sum,
-	token.Minus:     Sum,
-	token.Slash:     Product,
-	token.Star:      Product,
-	token.Increment: Postfix,
-	token.Decrement: Postfix,
-	token.LParen:    Call,
+	token.Assign:     Assignment,
+	token.LogicalOr:  LogicalOr,
+	token.LogicalAnd: LogicalAnd,
+	token.EQ:         Equals,
+	token.NEQ:        Equals,
+	token.LT:         Relation,
+	token.GT:         Relation,
+	token.LTE:        Relation,
+	token.GTE:        Relation,
+	token.Plus:       Sum,
+	token.Minus:      Sum,
+	token.Slash:      Product,
+	token.Star:       Product,
+	token.Increment:  Postfix,
+	token.Decrement:  Postfix,
+	token.LParen:     Call,
 }
 
 func getPrecedence(token *token.Token) Precedence {
@@ -60,6 +64,8 @@ func (parser *Parser) registerExpressionParseFunctions() {
 
 	parser.infixParseFunctions = make(map[token.Type]func(*Context, Expression) Expression)
 	parser.infixParseFunctions[token.Assign] = parser.parseAssignmentExpression
+	parser.infixParseFunctions[token.LogicalOr] = parser.parseInfixExpression
+	parser.infixParseFunctions[token.LogicalAnd] = parser.parseInfixExpression
 	parser.infixParseFunctions[token.EQ] = parser.parseInfixExpression
 	parser.infixParseFunctions[token.NEQ] = parser.parseInfixExpression
 	parser.infixParseFunctions[token.GT] = parser.parseInfixExpression
@@ -174,9 +180,6 @@ func (parser *Parser) parseInfixExpression(context *Context, left Expression) Ex
 	precedence := precedences[currentToken.Type]
 
 	right := parser.parseExpression(context, precedence)
-	if isInvalid(right) {
-		return right
-	}
 
 	return &InfixExpression{
 		OperatorToken: currentToken,
@@ -198,9 +201,6 @@ func (parser *Parser) parseAssignmentExpression(context *Context, left Expressio
 	}
 
 	right := parser.parseExpression(context, precedence)
-	if isInvalid(right) {
-		return right
-	}
 
 	return &AssignmentExpression{
 		IdentToken:  ident.IdentToken,

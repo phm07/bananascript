@@ -29,11 +29,15 @@ const (
 	LTE
 	GTE
 
-	Assign
 	Plus
 	Minus
 	Slash
 	Star
+
+	LogicalAnd
+	LogicalOr
+
+	Assign
 	Qmark
 	Amp
 	Bang
@@ -97,11 +101,13 @@ func (tokenType Type) ToString() string {
 		">",
 		"<=",
 		">=",
-		"=",
 		"+",
 		"-",
 		"/",
 		"*",
+		"&&",
+		"||",
+		"=",
 		"?",
 		"&",
 		"!",
@@ -143,11 +149,13 @@ func (tokenType Type) ToStringHumanReadable() string {
 		"'>'",
 		"'<='",
 		"'>='",
-		"'='",
 		"'+'",
 		"'-'",
 		"'/'",
 		"'*'",
+		"'&&'",
+		"'||'",
+		"'='",
 		"'?'",
 		"'&'",
 		"'!'",

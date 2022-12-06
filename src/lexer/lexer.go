@@ -114,7 +114,16 @@ func (lexer *Lexer) NextToken() *token.Token {
 	case '?':
 		return lexer.newToken(token.Qmark, "", startCol)
 	case '&':
+		if lexer.current() == '&' {
+			lexer.consume()
+			return lexer.newToken(token.LogicalAnd, "", startCol)
+		}
 		return lexer.newToken(token.Amp, "", startCol)
+	case '|':
+		if lexer.current() == '|' {
+			lexer.consume()
+			return lexer.newToken(token.LogicalOr, "", startCol)
+		}
 	case '!':
 		if lexer.current() == '=' {
 			lexer.consume()
@@ -152,29 +161,29 @@ func (lexer *Lexer) NextToken() *token.Token {
 			literal := lexer.input[(start - 1):end]
 			return lexer.newToken(token.Illegal, literal, startCol)
 		}
-	default:
-		if isIdent(char) {
-			start := lexer.position - 1
-			for isIdent(lexer.current()) || isDigit(lexer.current()) {
-				lexer.consume()
-			}
-			ident := lexer.input[start:lexer.position]
-			if tokenType, exists := token.Keywords[ident]; exists {
-				return lexer.newToken(tokenType, "", startCol)
-			}
-			return lexer.newToken(token.Ident, ident, startCol)
+	}
 
-		} else if isDigit(char) {
-			start := lexer.position - 1
-			for isDigit(lexer.current()) {
-				lexer.consume()
-			}
-			integer := lexer.input[start:lexer.position]
-			return lexer.newToken(token.IntLiteral, integer, startCol)
-
-		} else {
-			return lexer.newToken(token.Illegal, string(char), startCol)
+	if isIdent(char) {
+		start := lexer.position - 1
+		for isIdent(lexer.current()) || isDigit(lexer.current()) {
+			lexer.consume()
 		}
+		ident := lexer.input[start:lexer.position]
+		if tokenType, exists := token.Keywords[ident]; exists {
+			return lexer.newToken(tokenType, "", startCol)
+		}
+		return lexer.newToken(token.Ident, ident, startCol)
+
+	} else if isDigit(char) {
+		start := lexer.position - 1
+		for isDigit(lexer.current()) {
+			lexer.consume()
+		}
+		integer := lexer.input[start:lexer.position]
+		return lexer.newToken(token.IntLiteral, integer, startCol)
+
+	} else {
+		return lexer.newToken(token.Illegal, string(char), startCol)
 	}
 }
 

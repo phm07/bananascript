@@ -85,9 +85,18 @@ func evalInfixExpression(infixExpression *parser.InfixExpression, environment *E
 	if isError(leftObject) {
 		return leftObject
 	}
+	if infixExpression.Operator == token.LogicalAnd && !implicitBoolConversion(leftObject) {
+		return &BooleanObject{Value: false}
+	} else if infixExpression.Operator == token.LogicalOr && implicitBoolConversion(leftObject) {
+		return &BooleanObject{Value: true}
+	}
+
 	rightObject := Eval(infixExpression.Right, environment)
 	if isError(rightObject) {
 		return rightObject
+	}
+	if infixExpression.Operator == token.LogicalAnd || infixExpression.Operator == token.LogicalOr {
+		return &BooleanObject{Value: implicitBoolConversion(rightObject)}
 	}
 
 	switch infixExpression.Operator {
