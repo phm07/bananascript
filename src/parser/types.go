@@ -1,7 +1,5 @@
 package parser
 
-import "fmt"
-
 const (
 	TypeNever  = "never"
 	TypeNull   = "null"
@@ -89,8 +87,6 @@ type FunctionType struct {
 }
 
 func (functionType *FunctionType) ToString() string {
-	fmt.Printf("%+v\n", functionType)
-
 	result := "fn("
 	for i, parameter := range functionType.ParameterTypes {
 		if i > 0 {
