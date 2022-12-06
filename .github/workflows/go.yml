@@ -20,20 +20,21 @@ jobs:
 
     - name: Build win-amd64
       run: GOOS=windows GOARCH=amd64 go build -o build/win-amd64/bananascript.exe src/main.go
-      
+
     - name: Build win-386
       run: GOOS=windows GOARCH=386 go build -o build/win-386/bananascript.exe src/main.go
-      
+
     - name: Build linux-amd64
       run: GOOS=linux GOARCH=amd64 go build -o build/linux-amd64/bananascript src/main.go
 
     - name: Build linux-386
       run: GOOS=linux GOARCH=386 go build -o build/linux-386/bananascript src/main.go
-      
+
     - name: Build linux-arm
       run: GOOS=linux GOARCH=arm go build -o build/linux-arm/bananascript src/main.go
-      
+
     - name: Build linux-arm64
       run: GOOS=linux GOARCH=arm64 go build -o build/linux-arm64/bananascript src/main.go
-      
-    - run: mv build/ /var/www/builds/$(date date '+%F_%H-%M-%S')
+
+    - name: Publish
+      run: mv build/ /var/www/builds/$(date '+%F_%H-%M-%S')

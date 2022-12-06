@@ -3,6 +3,9 @@
 BananaScript is a strongly typed, interpreted programming language written in Go.
 It was inspired by the Monkey language and its [original interpreter](https://interpreterbook.com/).
 
+## Builds
+Pre-built binaries are available [here](https://builds.pauhull.de).
+
 ## Language tour
 
 ### Hello world
