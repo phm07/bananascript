@@ -44,9 +44,11 @@ const (
 	Increment
 	Decrement
 
+	Dot
 	Comma
 	Semi
 	Colon
+	DoubleColon
 	Define
 
 	LParen
@@ -113,9 +115,11 @@ func (tokenType Type) ToString() string {
 		"!",
 		"++",
 		"--",
+		".",
 		",",
 		";",
 		":",
+		"::",
 		":=",
 		"(",
 		")",
@@ -161,9 +165,11 @@ func (tokenType Type) ToStringHumanReadable() string {
 		"'!'",
 		"'++'",
 		"'--'",
+		"'.'",
 		"','",
 		"';'",
 		"':'",
+		"'::'",
 		"':='",
 		"'('",
 		"')'",

@@ -2,6 +2,7 @@ package parser
 
 import (
 	"bananascript/src/token"
+	"bananascript/src/types"
 	"fmt"
 	"strconv"
 )
@@ -17,7 +18,7 @@ type Statement interface {
 
 type Expression interface {
 	Node
-	Type(*Context) Type
+	Type(*Context) types.Type
 }
 
 type Program struct {
@@ -64,7 +65,7 @@ func (identifier *Identifier) ToString() string {
 type Parameter struct {
 	Token *token.Token
 	Name  *Identifier
-	Type  Type
+	Type  types.Type
 }
 
 func (parameter *Parameter) ToString() string {
@@ -218,7 +219,8 @@ type FunctionDefinitionStatement struct {
 	Name       *Identifier
 	Parameters []*Parameter
 	Body       *BlockStatement
-	ReturnType Type
+	ThisType   types.Type
+	ReturnType types.Type
 }
 
 func (funcStatement *FunctionDefinitionStatement) Token() *token.Token {
@@ -239,7 +241,7 @@ func (funcStatement *FunctionDefinitionStatement) ToString() string {
 type LetStatement struct {
 	LetToken *token.Token
 	Name     *Identifier
-	Type     Type
+	Type     types.Type
 	Value    Expression
 }
 
@@ -336,4 +338,19 @@ func (incrementExpression *IncrementExpression) ToString() string {
 		result += incrementExpression.Operator.ToString()
 	}
 	return result
+}
+
+type MemberAccessExpression struct {
+	DotToken   *token.Token
+	Expression Expression
+	Member     *Identifier
+	ParentType types.Type
+}
+
+func (memberAccessExpression *MemberAccessExpression) Token() *token.Token {
+	return memberAccessExpression.DotToken
+}
+
+func (memberAccessExpression *MemberAccessExpression) ToString() string {
+	return memberAccessExpression.Expression.ToString() + "." + memberAccessExpression.Member.Value
 }

@@ -2,6 +2,7 @@ package parser
 
 import (
 	"bananascript/src/token"
+	"bananascript/src/types"
 	"reflect"
 )
 
@@ -95,7 +96,7 @@ func (parser *Parser) parseLetStatement(context *Context) *LetStatement {
 		if statement.Type == nil {
 			return nil
 		}
-		if never, isNever := statement.Type.(*NeverType); isNever {
+		if never, isNever := statement.Type.(*types.NeverType); isNever {
 			parser.error(typeToken, never.Message)
 		}
 		assignmentToken = token.Assign
@@ -115,11 +116,6 @@ func (parser *Parser) parseLetStatement(context *Context) *LetStatement {
 		return nil
 	}
 
-	if _, exists := context.GetInThisScope(name); exists {
-		parser.error(identToken, "Cannot redefine '%s'", name)
-		return nil
-	}
-
 	inferredType := statement.Value.Type(context)
 	if statement.Type == nil {
 		statement.Type = inferredType
@@ -135,18 +131,34 @@ func (parser *Parser) parseLetStatement(context *Context) *LetStatement {
 		return nil
 	}
 
-	context.Define(name, statement.Type)
+	_, ok := context.Define(name, statement.Type, nil)
+	if !ok {
+		parser.error(identToken, "Cannot redefine '%s'", name)
+	}
 	return statement
 }
 
 func (parser *Parser) parseFunctionDefinitionStatement(context *Context) *FunctionDefinitionStatement {
 
 	statement := &FunctionDefinitionStatement{FuncToken: parser.current()}
+
+	if parser.peek().Type == token.LParen {
+		parser.consume()
+		statement.ThisType = parser.parseType()
+		if statement.ThisType == nil {
+			return nil
+		}
+		if !parser.assertNext(token.RParen) || !parser.assertNext(token.DoubleColon) {
+			return nil
+		}
+	}
+
 	if !parser.assertNext(token.Ident) {
 		return nil
 	}
-	name := parser.current().Literal
-	statement.Name = &Identifier{IdentToken: parser.current(), Value: name}
+	identToken := parser.current()
+	name := identToken.Literal
+	statement.Name = &Identifier{IdentToken: identToken, Value: name}
 
 	if !parser.assertNext(token.LParen) {
 		return nil
@@ -159,7 +171,7 @@ func (parser *Parser) parseFunctionDefinitionStatement(context *Context) *Functi
 
 	if parser.peek().Type == token.LBrace {
 		parser.consume()
-		statement.ReturnType = &VoidType{}
+		statement.ReturnType = &types.VoidType{}
 	} else {
 		statement.ReturnType = parser.parseType()
 		if statement.ReturnType == nil || !parser.assertNext(token.LBrace) {
@@ -167,25 +179,35 @@ func (parser *Parser) parseFunctionDefinitionStatement(context *Context) *Functi
 		}
 	}
 
-	parameterTypes := make([]Type, 0)
+	parameterTypes := make([]types.Type, 0)
 	functionContext := ExtendContext(context)
 	functionContext.returnType = statement.ReturnType
+	if statement.ThisType != nil {
+		functionContext.Define("this", statement.ThisType, nil)
+	}
 	for _, parameter := range statement.Parameters {
 		parameterTypes = append(parameterTypes, parameter.Type)
-		functionContext.Define(parameter.Name.Value, parameter.Type)
+		_, ok := functionContext.Define(parameter.Name.Value, parameter.Type, nil)
+		if !ok {
+			parser.error(parameter.Token, "Cannot redefine '%s'", parameter.Name.Value)
+		}
 	}
 
-	context.Define(name, &FunctionType{
+	_, ok := context.Define(name, &types.FunctionType{
 		ParameterTypes: parameterTypes,
 		ReturnType:     statement.ReturnType,
-	})
+	}, statement.ThisType)
+
+	if !ok {
+		parser.error(identToken, "Cannot redefine '%s'", name)
+	}
 
 	statement.Body = parser.parseBlockStatement(CloneContext(functionContext))
 	if statement.Body == nil {
 		return nil
 	}
 
-	if _, isVoid := statement.ReturnType.(*VoidType); !isVoid {
+	if _, isVoid := statement.ReturnType.(*types.VoidType); !isVoid {
 		if returns := parser.doesReturn(CloneContext(functionContext), statement.Body); !returns {
 			erroneousToken := statement.Body.RBraceToken
 			if erroneousToken == nil {

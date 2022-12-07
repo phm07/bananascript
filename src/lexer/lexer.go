@@ -130,11 +130,17 @@ func (lexer *Lexer) NextToken() *token.Token {
 			return lexer.newToken(token.NEQ, "", startCol)
 		}
 		return lexer.newToken(token.Bang, "", startCol)
+	case '.':
+		return lexer.newToken(token.Dot, "", startCol)
 	case ',':
 		return lexer.newToken(token.Comma, "", startCol)
 	case ';':
 		return lexer.newToken(token.Semi, "", startCol)
 	case ':':
+		if lexer.current() == ':' {
+			lexer.consume()
+			return lexer.newToken(token.DoubleColon, "", startCol)
+		}
 		if lexer.current() == '=' {
 			lexer.consume()
 			return lexer.newToken(token.Define, "", startCol)

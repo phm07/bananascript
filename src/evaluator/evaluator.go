@@ -43,8 +43,10 @@ func Eval(node parser.Node, environment *Environment) Object {
 		return evalWhileStatement(node, environment)
 	case *parser.IncrementExpression:
 		return evalIncrementExpression(node, environment)
+	case *parser.MemberAccessExpression:
+		return evalMemberAccessExpression(node, environment)
 	}
-	return nil
+	return NewError("Unknown node (%T)", node)
 }
 
 func evalProgram(program *parser.Program, environment *Environment) Object {
@@ -183,10 +185,7 @@ func evalCallExpression(callExpression *parser.CallExpression, environment *Envi
 	switch function := function.(type) {
 	case *ErrorObject:
 		return function
-	case *FunctionObject:
-		if len(callExpression.Arguments) != len(function.Parameters) {
-			return NewError("Mismatching number of arguments")
-		}
+	case Function:
 		argumentObjects := make([]Object, 0)
 		for _, argument := range callExpression.Arguments {
 			argumentObjects = append(argumentObjects, Eval(argument, environment))
@@ -226,9 +225,6 @@ func evalLetStatement(letStatement *parser.LetStatement, environment *Environmen
 func evalFunctionDefinitionStatement(funcStatement *parser.FunctionDefinitionStatement, environment *Environment) Object {
 
 	name := funcStatement.Name.Value
-	if _, exists := environment.GetInThisScope(name); exists {
-		return NewError("Cannot re-declare function")
-	}
 
 	identifiers := make([]*parser.Identifier, 0)
 	for _, parameter := range funcStatement.Parameters {
@@ -236,17 +232,16 @@ func evalFunctionDefinitionStatement(funcStatement *parser.FunctionDefinitionSta
 	}
 
 	object := &FunctionObject{
-		Parameters: identifiers,
-		Execute: func(arguments []Object) Object {
-			newEnvironment := ExtendEnvironment(environment)
-			for i, argument := range arguments {
-				name := identifiers[i].Value
-				newEnvironment.Define(name, argument)
-			}
-			return Eval(funcStatement.Body, newEnvironment)
-		},
+		Parameters:  identifiers,
+		Body:        funcStatement.Body,
+		Environment: environment,
 	}
-	environment.Define(name, object)
+
+	if funcStatement.ThisType != nil {
+		environment.DefineTypeMember(funcStatement.ThisType, name, object)
+	} else {
+		environment.Define(name, object)
+	}
 	return nil
 }
 
@@ -328,6 +323,26 @@ func evalIncrementExpression(incrementExpression *parser.IncrementExpression, en
 		}
 	} else {
 		return NewError("Cannot increment non-int")
+	}
+}
+
+func evalMemberAccessExpression(memberAccessExpression *parser.MemberAccessExpression, environment *Environment) Object {
+
+	object := Eval(memberAccessExpression.Expression, environment)
+	if isError(object) {
+		return object
+	}
+
+	member, ok := environment.GetMember(object, memberAccessExpression.ParentType, memberAccessExpression.Member.Value)
+	if !ok {
+		return NewError("Member %s does not exist", memberAccessExpression.Member.Value)
+	}
+
+	switch member := member.(type) {
+	case Function:
+		return member.With(object)
+	default:
+		return member
 	}
 }
 

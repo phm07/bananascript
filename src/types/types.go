@@ -1,4 +1,4 @@
-package parser
+package types
 
 const (
 	TypeNever  = "never"
@@ -135,4 +135,17 @@ func NewOptional(base Type) Type {
 	default:
 		return &Optional{Base: base}
 	}
+}
+
+func IsAssignable(theType Type, parentType Type) bool {
+	if theType == nil {
+		if parentType != nil {
+			return false
+		}
+	} else {
+		if parentType == nil || !theType.IsAssignable(parentType) {
+			return false
+		}
+	}
+	return true
 }

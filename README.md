@@ -44,3 +44,24 @@ while i++ < 5 {
     println(line);
 }
 ```
+
+### Type extensions
+```
+fn (int)::fac() int {
+    if this <= 1 {
+        return 1;
+    } else {
+        return this * (this - 1).fac();
+    }
+}
+
+let num := 5.fac(); // 120
+```
+
+## Builtin functions
+```
+fn println(string) void;
+fn (string)::toString() string;
+fn (int)::toString() string;
+fn (bool)::toString() string;
+```

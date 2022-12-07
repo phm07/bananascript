@@ -2,6 +2,7 @@ package parser
 
 import (
 	"bananascript/src/token"
+	"bananascript/src/types"
 	"strconv"
 )
 
@@ -16,9 +17,8 @@ const (
 	Relation
 	Sum
 	Product
-	Postfix
 	Prefix
-	Call
+	Postfix
 )
 
 var precedences = map[token.Type]Precedence{
@@ -37,7 +37,8 @@ var precedences = map[token.Type]Precedence{
 	token.Star:       Product,
 	token.Increment:  Postfix,
 	token.Decrement:  Postfix,
-	token.LParen:     Call,
+	token.LParen:     Postfix,
+	token.Dot:        Postfix,
 }
 
 func getPrecedence(token *token.Token) Precedence {
@@ -79,6 +80,7 @@ func (parser *Parser) registerExpressionParseFunctions() {
 	parser.infixParseFunctions[token.LParen] = parser.parseCallExpression
 	parser.infixParseFunctions[token.Increment] = parser.parseIncrementInfixExpression
 	parser.infixParseFunctions[token.Decrement] = parser.parseIncrementInfixExpression
+	parser.infixParseFunctions[token.Dot] = parser.parseMemberAccessExpression
 }
 
 func (parser *Parser) parseExpression(context *Context, precedence Precedence) Expression {
@@ -101,11 +103,10 @@ func (parser *Parser) parseExpression(context *Context, precedence Precedence) E
 		expression = infixFunction(context, expression)
 	}
 
-	if inferredType, isNever := expression.Type(context).(*NeverType); isNever {
+	if inferredType, isNever := expression.Type(context).(*types.NeverType); isNever {
 		if len(inferredType.Message) > 0 {
 			parser.error(currentToken, "Invalid expression (%s)", inferredType.Message)
 		}
-		return &InvalidExpression{currentToken}
 	}
 
 	return expression
@@ -190,21 +191,19 @@ func (parser *Parser) parseInfixExpression(context *Context, left Expression) Ex
 }
 
 func (parser *Parser) parseAssignmentExpression(context *Context, left Expression) Expression {
-	currentToken := parser.consume()
-	precedence := precedences[currentToken.Type]
+	assignToken := parser.consume()
+	right := parser.parseExpression(context, Assignment)
 
 	ident, isIdent := left.(*Identifier)
 	if !isIdent {
 		erroneousToken := left.Token()
 		parser.error(erroneousToken, "Invalid identifier")
-		return &InvalidExpression{erroneousToken}
+		return &InvalidExpression{InvalidToken: assignToken}
 	}
-
-	right := parser.parseExpression(context, precedence)
 
 	return &AssignmentExpression{
 		IdentToken:  ident.IdentToken,
-		AssignToken: currentToken,
+		AssignToken: assignToken,
 		Name:        ident,
 		Expression:  right,
 	}
@@ -234,6 +233,26 @@ func (parser *Parser) parseCallExpression(context *Context, function Expression)
 func (parser *Parser) parseIncrementInfixExpression(_ *Context, identExpression Expression) Expression {
 	operatorToken := parser.current()
 	return parser.parseIncrementExpression(operatorToken, identExpression, false)
+}
+
+func (parser *Parser) parseMemberAccessExpression(context *Context, left Expression) Expression {
+	dotToken := parser.consume()
+	leftType := left.Type(context)
+	right := parser.parseExpression(NewSubContext(context, leftType), Postfix)
+
+	ident, isIdent := right.(*Identifier)
+	if !isIdent {
+		erroneousToken := right.Token()
+		parser.error(erroneousToken, "Invalid identifier")
+		return &InvalidExpression{InvalidToken: dotToken}
+	}
+
+	return &MemberAccessExpression{
+		DotToken:   dotToken,
+		Expression: left,
+		Member:     ident,
+		ParentType: leftType,
+	}
 }
 
 /** misc **/

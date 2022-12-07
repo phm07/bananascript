@@ -3,6 +3,7 @@ package parser
 import (
 	"bananascript/src/lexer"
 	"bananascript/src/token"
+	"bananascript/src/types"
 	"reflect"
 )
 
@@ -175,37 +176,37 @@ func (parser *Parser) parseParameter() *Parameter {
 	return &Parameter{Token: identToken, Name: ident, Type: theType}
 }
 
-func (parser *Parser) parseType() Type {
+func (parser *Parser) parseType() types.Type {
 
 	next := parser.peek()
-	var currentType Type
+	var currentType types.Type
 
 	switch next.Type {
 	case token.Ident:
 		parser.consume()
 		typeName := parser.current().Literal
 		switch typeName {
-		case TypeString:
-			currentType = &StringType{}
-		case TypeBool:
-			currentType = &BoolType{}
-		case TypeInt:
-			currentType = &IntType{}
+		case types.TypeString:
+			currentType = &types.StringType{}
+		case types.TypeBool:
+			currentType = &types.BoolType{}
+		case types.TypeInt:
+			currentType = &types.IntType{}
 		default:
 			currentType = newNever("Unknown type '%s'", typeName)
 		}
 	case token.Null:
 		parser.consume()
-		currentType = &NullType{}
+		currentType = &types.NullType{}
 	case token.Void:
 		parser.consume()
-		currentType = &VoidType{}
+		currentType = &types.VoidType{}
 	case token.Func:
 		parser.consume()
 		if !parser.assertNext(token.LParen) {
 			return nil
 		}
-		parameterTypes := make([]Type, 0)
+		parameterTypes := make([]types.Type, 0)
 		if parser.peek().Type != token.RParen {
 			for {
 				parameterType := parser.parseType()
@@ -225,9 +226,9 @@ func (parser *Parser) parseType() Type {
 		}
 		returnType := parser.parseType()
 		if returnType == nil {
-			returnType = &VoidType{}
+			returnType = &types.VoidType{}
 		}
-		return &FunctionType{
+		return &types.FunctionType{
 			ParameterTypes: parameterTypes,
 			ReturnType:     returnType,
 		}
@@ -237,7 +238,7 @@ func (parser *Parser) parseType() Type {
 
 	if parser.peek().Type == token.Qmark {
 		parser.consume()
-		currentType = NewOptional(currentType)
+		currentType = types.NewOptional(currentType)
 	}
 
 	return currentType
