@@ -31,5 +31,5 @@ jobs:
             outfile="${outfile}.exe"
           fi
           echo "Building $line..."
-          GOOS="$os" GOARCH="$arch" go build -o $outfile src/main.go
+          GOOS="$os" GOARCH="$arch" go build -o $outfile src/main.go || true
         done
