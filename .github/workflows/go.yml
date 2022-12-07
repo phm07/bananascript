@@ -18,26 +18,18 @@ jobs:
       with:
         go-version: 1.18
 
-    - name: Build win-amd64
-      run: GOOS=windows GOARCH=amd64 go build -o build/win-amd64/bananascript.exe src/main.go
-
-    - name: Build win-386
-      run: GOOS=windows GOARCH=386 go build -o build/win-386/bananascript.exe src/main.go
-
-    - name: Build linux-amd64
-      run: GOOS=linux GOARCH=amd64 go build -o build/linux-amd64/bananascript src/main.go
-
-    - name: Build linux-386
-      run: GOOS=linux GOARCH=386 go build -o build/linux-386/bananascript src/main.go
-
-    - name: Build linux-arm
-      run: GOOS=linux GOARCH=arm go build -o build/linux-arm/bananascript src/main.go
-
-    - name: Build linux-arm64
-      run: GOOS=linux GOARCH=arm64 go build -o build/linux-arm64/bananascript src/main.go
-
-    - name: Publish
+    - name: Build all platforms
       run: |
         dirname="/var/www/builds/$(date '+%F_%H-%M-%S')"
-        mv build/ $dirname
         ln -sfn $dirname /var/www/builds/latest
+        go tool dist list | while read line
+        do
+          GOOS=$(echo $line | cut -d "/" -f 1)
+          GOARCH=$(echo $line | cut -d "/" -f 2)
+          outfile="$dirname/$GOOS/$GOARCH/bananascript"
+          if [ "$GOOS" = "windows" ]; then
+            outfile="${outfile}.exe"
+          fi
+          echo "Building $line..."
+          go build -o $outfile src/main.go
+        done
