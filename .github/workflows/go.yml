@@ -40,4 +40,4 @@ jobs:
       run: |
         dirname="/var/www/builds/$(date '+%F_%H-%M-%S')"
         mv build/ $dirname
-        ln -sf $dirname /var/www/builds/latest
+        ln -sfn $dirname /var/www/builds/latest
