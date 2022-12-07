@@ -5,6 +5,8 @@ import (
 	"bananascript/src/parser"
 	"bananascript/src/types"
 	"fmt"
+	"strconv"
+	"strings"
 )
 
 type Builtin struct {
@@ -57,15 +59,139 @@ var builtinTypeMembers = map[types.Type]map[string]*Builtin{
 				},
 			},
 		},
+		"print": {
+			Type: &types.FunctionType{
+				ParameterTypes: []types.Type{&types.StringType{}},
+				ReturnType:     &types.VoidType{},
+			},
+			Object: &BuiltinFunction{
+				Executor: func(_ evaluator.Object, arguments []evaluator.Object) evaluator.Object {
+					fmt.Print(arguments[0].ToString())
+					return nil
+				},
+			},
+		},
+		"prompt": {
+			Type: &types.FunctionType{
+				ParameterTypes: []types.Type{&types.StringType{}},
+				ReturnType:     &types.StringType{},
+			},
+			Object: &BuiltinFunction{
+				Executor: func(_ evaluator.Object, arguments []evaluator.Object) evaluator.Object {
+					fmt.Print(arguments[0].ToString())
+					var input string
+					_, err := fmt.Scanln(&input)
+					if err != nil {
+						panic(err)
+					}
+					return &evaluator.StringObject{Value: input}
+				},
+			},
+		},
+		"min": {
+			Type: &types.FunctionType{
+				ParameterTypes: []types.Type{&types.IntType{}, &types.IntType{}},
+				ReturnType:     &types.IntType{},
+			},
+			Object: &BuiltinFunction{
+				Executor: func(_ evaluator.Object, arguments []evaluator.Object) evaluator.Object {
+					a := arguments[0].(*evaluator.IntegerObject).Value
+					b := arguments[1].(*evaluator.IntegerObject).Value
+					min := a
+					if b < a {
+						min = b
+					}
+					return &evaluator.IntegerObject{Value: min}
+				},
+			},
+		},
+		"max": {
+			Type: &types.FunctionType{
+				ParameterTypes: []types.Type{&types.IntType{}, &types.IntType{}},
+				ReturnType:     &types.IntType{},
+			},
+			Object: &BuiltinFunction{
+				Executor: func(_ evaluator.Object, arguments []evaluator.Object) evaluator.Object {
+					a := arguments[0].(*evaluator.IntegerObject).Value
+					b := arguments[1].(*evaluator.IntegerObject).Value
+					max := a
+					if a < b {
+						max = b
+					}
+					return &evaluator.IntegerObject{Value: max}
+				},
+			},
+		},
 	},
 	&types.IntType{}: {
 		"toString": toStringBuiltin,
+		"abs": {
+			Type: &types.FunctionType{
+				ParameterTypes: []types.Type{},
+				ReturnType:     &types.IntType{},
+			},
+			Object: &BuiltinFunction{
+				Executor: func(this evaluator.Object, _ []evaluator.Object) evaluator.Object {
+					value := this.(*evaluator.IntegerObject).Value
+					if value < 0 {
+						value *= -1
+					}
+					return &evaluator.IntegerObject{Value: value}
+				},
+			},
+		},
 	},
 	&types.BoolType{}: {
 		"toString": toStringBuiltin,
 	},
 	&types.StringType{}: {
 		"toString": toStringBuiltin,
+		"length": {
+			Type: &types.FunctionType{
+				ParameterTypes: []types.Type{},
+				ReturnType:     &types.IntType{},
+			},
+			Object: &BuiltinFunction{
+				Executor: func(this evaluator.Object, _ []evaluator.Object) evaluator.Object {
+					return &evaluator.IntegerObject{Value: int64(len(this.ToString()))}
+				},
+			},
+		},
+		"uppercase": {
+			Type: &types.FunctionType{
+				ParameterTypes: []types.Type{},
+				ReturnType:     &types.StringType{},
+			},
+			Object: &BuiltinFunction{
+				Executor: func(this evaluator.Object, _ []evaluator.Object) evaluator.Object {
+					return &evaluator.StringObject{Value: strings.ToUpper(this.ToString())}
+				},
+			},
+		},
+		"lowercase": {
+			Type: &types.FunctionType{
+				ParameterTypes: []types.Type{},
+				ReturnType:     &types.StringType{},
+			},
+			Object: &BuiltinFunction{
+				Executor: func(this evaluator.Object, _ []evaluator.Object) evaluator.Object {
+					return &evaluator.StringObject{Value: strings.ToLower(this.ToString())}
+				},
+			},
+		},
+		"parseInt": {
+			Type: &types.FunctionType{
+				ParameterTypes: []types.Type{},
+				ReturnType:     &types.IntType{},
+			},
+			Object: &BuiltinFunction{
+				Executor: func(this evaluator.Object, _ []evaluator.Object) evaluator.Object {
+					// TODO throw error if invalid
+					value, _ := strconv.ParseInt(this.ToString(), 10, 64)
+					return &evaluator.IntegerObject{Value: value}
+				},
+			},
+		},
 	},
 }
 

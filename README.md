@@ -60,8 +60,20 @@ let num := 5.fac(); // 120
 
 ## Builtin functions
 ```
-fn println(string) void;
-fn (string)::toString() string;
-fn (int)::toString() string;
-fn (bool)::toString() string;
+fn println(string) void;  // Print line to console
+fn print(string) void;    // Print to console (no \n)
+fn prompt(string) string; // Input prompt
+fn min(int, int) int;     // Returns smaller int
+fn max(int, int) int;     // Returns bigger int
+
+fn (string)::toString() string;  // Returns itself
+fn (string)::uppercase() string; // Transforms string to uppercase
+fn (string)::lowercase() string; // Transform string to lowercase
+fn (string)::length() int;       // Returns string length
+fn (string)::parseInt() int;     // Parses int from string
+
+fn (int)::toString() string; // Returns itself as string
+fn (int)::abs() int;         // Returns absolute value
+
+fn (bool)::toString() string; // Returns itself as string
 ```
