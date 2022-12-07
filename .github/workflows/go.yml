@@ -24,12 +24,12 @@ jobs:
         ln -sfn $dirname /var/www/builds/latest
         go tool dist list | while read line
         do
-          GOOS=$(echo $line | cut -d "/" -f 1)
-          GOARCH=$(echo $line | cut -d "/" -f 2)
-          outfile="$dirname/$GOOS/$GOARCH/bananascript"
+          os=$(echo $line | cut -d "/" -f 1)
+          arch=$(echo $line | cut -d "/" -f 2)
+          outfile="$dirname/$os/$arch/bananascript"
           if [ "$GOOS" = "windows" ]; then
             outfile="${outfile}.exe"
           fi
           echo "Building $line..."
-          go build -o $outfile src/main.go
+          GOOS="$os" GOARCH="$arch" go build -o $outfile src/main.go
         done
