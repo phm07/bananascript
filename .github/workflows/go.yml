@@ -27,7 +27,7 @@ jobs:
           os=$(echo $line | cut -d "/" -f 1)
           arch=$(echo $line | cut -d "/" -f 2)
           outfile="$dirname/$os/$arch/bananascript"
-          if [ "$GOOS" = "windows" ]; then
+          if [ "$os" = "windows" ]; then
             outfile="${outfile}.exe"
           fi
           echo "Building $line..."
