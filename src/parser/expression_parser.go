@@ -2,90 +2,90 @@ package parser
 
 import (
 	"bananascript/src/token"
-	"bananascript/src/types"
 	"strconv"
 )
 
-type Precedence int
+type ExpressionPrecedence int
 
 const (
-	Lowest Precedence = iota
-	Assignment
-	LogicalOr
-	LogicalAnd
-	Equals
-	Relation
-	Sum
-	Product
-	Prefix
-	Postfix
+	ExpressionLowest ExpressionPrecedence = iota
+	ExpressionAssignment
+	ExpressionLogicalOr
+	ExpressionLogicalAnd
+	ExpressionEquals
+	ExpressionRelation
+	ExpressionSum
+	ExpressionProduct
+	ExpressionPrefix
+	ExpressionPostfix
 )
 
-var precedences = map[token.Type]Precedence{
-	token.Assign:     Assignment,
-	token.LogicalOr:  LogicalOr,
-	token.LogicalAnd: LogicalAnd,
-	token.EQ:         Equals,
-	token.NEQ:        Equals,
-	token.LT:         Relation,
-	token.GT:         Relation,
-	token.LTE:        Relation,
-	token.GTE:        Relation,
-	token.Plus:       Sum,
-	token.Minus:      Sum,
-	token.Slash:      Product,
-	token.Star:       Product,
-	token.Increment:  Postfix,
-	token.Decrement:  Postfix,
-	token.LParen:     Postfix,
-	token.Dot:        Postfix,
+var expressionPrecedences = map[token.Type]ExpressionPrecedence{
+	token.Assign:     ExpressionAssignment,
+	token.LogicalOr:  ExpressionLogicalOr,
+	token.LogicalAnd: ExpressionLogicalAnd,
+	token.EQ:         ExpressionEquals,
+	token.NEQ:        ExpressionEquals,
+	token.LT:         ExpressionRelation,
+	token.GT:         ExpressionRelation,
+	token.LTE:        ExpressionRelation,
+	token.GTE:        ExpressionRelation,
+	token.Plus:       ExpressionSum,
+	token.Minus:      ExpressionSum,
+	token.Slash:      ExpressionProduct,
+	token.Star:       ExpressionProduct,
+	token.Increment:  ExpressionPostfix,
+	token.Decrement:  ExpressionPostfix,
+	token.LParen:     ExpressionPostfix,
+	token.Dot:        ExpressionPostfix,
 }
 
-func getPrecedence(token *token.Token) Precedence {
-	if precedence, exists := precedences[token.Type]; exists {
+var prefixExpressionParseFunctions = make(map[token.Type]func(*Context) Expression)
+var infixExpressionParseFunctions = make(map[token.Type]func(*Context, Expression) Expression)
+
+func getExpressionPrecedence(token *token.Token) ExpressionPrecedence {
+	if precedence, exists := expressionPrecedences[token.Type]; exists {
 		return precedence
 	}
-	return Lowest
+	return ExpressionLowest
 }
 
 func (parser *Parser) registerExpressionParseFunctions() {
-	parser.prefixParseFunctions = make(map[token.Type]func(*Context) Expression)
-	parser.prefixParseFunctions[token.Ident] = parser.parseIdentifier
-	parser.prefixParseFunctions[token.IntLiteral] = parser.parseIntegerLiteral
-	parser.prefixParseFunctions[token.StringLiteral] = parser.parseStringLiteral
-	parser.prefixParseFunctions[token.Null] = parser.parseNullLiteral
-	parser.prefixParseFunctions[token.Void] = parser.parseVoidLiteral
-	parser.prefixParseFunctions[token.True] = parser.parseBooleanLiteral
-	parser.prefixParseFunctions[token.False] = parser.parseBooleanLiteral
-	parser.prefixParseFunctions[token.Bang] = parser.parsePrefixExpression
-	parser.prefixParseFunctions[token.Minus] = parser.parsePrefixExpression
-	parser.prefixParseFunctions[token.LParen] = parser.parseGroupedExpression
-	parser.prefixParseFunctions[token.Increment] = parser.parseIncrementPrefixExpression
-	parser.prefixParseFunctions[token.Decrement] = parser.parseIncrementPrefixExpression
+	prefixExpressionParseFunctions[token.Ident] = parser.parseIdentifier
+	prefixExpressionParseFunctions[token.IntLiteral] = parser.parseIntegerLiteral
+	prefixExpressionParseFunctions[token.StringLiteral] = parser.parseStringLiteral
+	prefixExpressionParseFunctions[token.Null] = parser.parseNullLiteral
+	prefixExpressionParseFunctions[token.Void] = parser.parseVoidLiteral
+	prefixExpressionParseFunctions[token.True] = parser.parseBooleanLiteral
+	prefixExpressionParseFunctions[token.False] = parser.parseBooleanLiteral
+	prefixExpressionParseFunctions[token.Bang] = parser.parsePrefixExpression
+	prefixExpressionParseFunctions[token.Minus] = parser.parsePrefixExpression
+	prefixExpressionParseFunctions[token.LParen] = parser.parseGroupedExpression
+	prefixExpressionParseFunctions[token.Increment] = parser.parseIncrementPrefixExpression
+	prefixExpressionParseFunctions[token.Decrement] = parser.parseIncrementPrefixExpression
 
-	parser.infixParseFunctions = make(map[token.Type]func(*Context, Expression) Expression)
-	parser.infixParseFunctions[token.Assign] = parser.parseAssignmentExpression
-	parser.infixParseFunctions[token.LogicalOr] = parser.parseInfixExpression
-	parser.infixParseFunctions[token.LogicalAnd] = parser.parseInfixExpression
-	parser.infixParseFunctions[token.EQ] = parser.parseInfixExpression
-	parser.infixParseFunctions[token.NEQ] = parser.parseInfixExpression
-	parser.infixParseFunctions[token.GT] = parser.parseInfixExpression
-	parser.infixParseFunctions[token.LT] = parser.parseInfixExpression
-	parser.infixParseFunctions[token.GTE] = parser.parseInfixExpression
-	parser.infixParseFunctions[token.LTE] = parser.parseInfixExpression
-	parser.infixParseFunctions[token.Plus] = parser.parseInfixExpression
-	parser.infixParseFunctions[token.Minus] = parser.parseInfixExpression
-	parser.infixParseFunctions[token.Slash] = parser.parseInfixExpression
-	parser.infixParseFunctions[token.Star] = parser.parseInfixExpression
-	parser.infixParseFunctions[token.LParen] = parser.parseCallExpression
-	parser.infixParseFunctions[token.Increment] = parser.parseIncrementInfixExpression
-	parser.infixParseFunctions[token.Decrement] = parser.parseIncrementInfixExpression
-	parser.infixParseFunctions[token.Dot] = parser.parseMemberAccessExpression
+	infixExpressionParseFunctions[token.Assign] = parser.parseAssignmentExpression
+	infixExpressionParseFunctions[token.LogicalOr] = parser.parseInfixExpression
+	infixExpressionParseFunctions[token.LogicalAnd] = parser.parseInfixExpression
+	infixExpressionParseFunctions[token.EQ] = parser.parseInfixExpression
+	infixExpressionParseFunctions[token.NEQ] = parser.parseInfixExpression
+	infixExpressionParseFunctions[token.GT] = parser.parseInfixExpression
+	infixExpressionParseFunctions[token.LT] = parser.parseInfixExpression
+	infixExpressionParseFunctions[token.GTE] = parser.parseInfixExpression
+	infixExpressionParseFunctions[token.LTE] = parser.parseInfixExpression
+	infixExpressionParseFunctions[token.Plus] = parser.parseInfixExpression
+	infixExpressionParseFunctions[token.Minus] = parser.parseInfixExpression
+	infixExpressionParseFunctions[token.Slash] = parser.parseInfixExpression
+	infixExpressionParseFunctions[token.Star] = parser.parseInfixExpression
+	infixExpressionParseFunctions[token.LParen] = parser.parseCallExpression
+	infixExpressionParseFunctions[token.Increment] = parser.parseIncrementInfixExpression
+	infixExpressionParseFunctions[token.Decrement] = parser.parseIncrementInfixExpression
+	infixExpressionParseFunctions[token.Dot] = parser.parseMemberAccessExpression
 }
 
-func (parser *Parser) parseExpression(context *Context, precedence Precedence) Expression {
+func (parser *Parser) parseExpression(context *Context, precedence ExpressionPrecedence) Expression {
 	currentToken := parser.current()
-	prefixFunction := parser.prefixParseFunctions[currentToken.Type]
+	prefixFunction := prefixExpressionParseFunctions[currentToken.Type]
 	if prefixFunction == nil {
 		parser.error(currentToken, "Unexpected %s", currentToken.ToString())
 		return &InvalidExpression{currentToken}
@@ -93,20 +93,14 @@ func (parser *Parser) parseExpression(context *Context, precedence Precedence) E
 
 	expression := prefixFunction(context)
 
-	for parser.peek().Type != token.Semi && precedence < getPrecedence(parser.peek()) {
-		infixFunction := parser.infixParseFunctions[parser.peek().Type]
+	for parser.peek().Type != token.Semi && precedence < getExpressionPrecedence(parser.peek()) {
+		infixFunction := infixExpressionParseFunctions[parser.peek().Type]
 		if infixFunction == nil {
 			break
 		}
 
 		parser.consume()
 		expression = infixFunction(context, expression)
-	}
-
-	if inferredType, isNever := expression.Type(context).(*types.NeverType); isNever {
-		if len(inferredType.Message) > 0 {
-			parser.error(currentToken, "Invalid expression (%s)", inferredType.Message)
-		}
 	}
 
 	return expression
@@ -119,7 +113,7 @@ func (parser *Parser) parsePrefixExpression(context *Context) Expression {
 	return &PrefixExpression{
 		PrefixToken: currentToken,
 		Operator:    currentToken.Type,
-		Expression:  parser.parseExpression(context, Prefix),
+		Expression:  parser.parseExpression(context, ExpressionPrefix),
 	}
 }
 
@@ -161,7 +155,7 @@ func (parser *Parser) parseIntegerLiteral(*Context) Expression {
 
 func (parser *Parser) parseGroupedExpression(context *Context) Expression {
 	parser.consume()
-	expression := parser.parseExpression(context, Lowest)
+	expression := parser.parseExpression(context, ExpressionLowest)
 	if !parser.assertNext(token.RParen) {
 		return &InvalidExpression{parser.current()}
 	}
@@ -170,7 +164,7 @@ func (parser *Parser) parseGroupedExpression(context *Context) Expression {
 
 func (parser *Parser) parseIncrementPrefixExpression(context *Context) Expression {
 	operatorToken := parser.consume()
-	identExpression := parser.parseExpression(context, Prefix)
+	identExpression := parser.parseExpression(context, ExpressionPrefix)
 	return parser.parseIncrementExpression(operatorToken, identExpression, true)
 }
 
@@ -178,7 +172,7 @@ func (parser *Parser) parseIncrementPrefixExpression(context *Context) Expressio
 
 func (parser *Parser) parseInfixExpression(context *Context, left Expression) Expression {
 	currentToken := parser.consume()
-	precedence := precedences[currentToken.Type]
+	precedence := expressionPrecedences[currentToken.Type]
 
 	right := parser.parseExpression(context, precedence)
 
@@ -192,7 +186,7 @@ func (parser *Parser) parseInfixExpression(context *Context, left Expression) Ex
 
 func (parser *Parser) parseAssignmentExpression(context *Context, left Expression) Expression {
 	assignToken := parser.consume()
-	right := parser.parseExpression(context, Assignment)
+	right := parser.parseExpression(context, ExpressionAssignment)
 
 	ident, isIdent := left.(*Identifier)
 	if !isIdent {
@@ -237,8 +231,8 @@ func (parser *Parser) parseIncrementInfixExpression(_ *Context, identExpression 
 
 func (parser *Parser) parseMemberAccessExpression(context *Context, left Expression) Expression {
 	dotToken := parser.consume()
-	leftType := left.Type(context)
-	right := parser.parseExpression(NewSubContext(context, leftType), Postfix)
+	leftType := parser.getExpressionType(left, context)
+	right := parser.parseExpression(NewSubContext(context, leftType), ExpressionPostfix)
 
 	ident, isIdent := right.(*Identifier)
 	if !isIdent {
@@ -267,10 +261,10 @@ func (parser *Parser) parseIncrementExpression(operatorToken *token.Token, ident
 	}
 
 	return &IncrementExpression{
-		IdentToken: ident.IdentToken,
-		Name:       ident,
-		Operator:   operatorToken.Type,
-		Pre:        pre,
+		OperatorToken: operatorToken,
+		Name:          ident,
+		Operator:      operatorToken.Type,
+		Pre:           pre,
 	}
 }
 
@@ -283,7 +277,7 @@ func (parser *Parser) parseArgumentList(context *Context) []Expression {
 	}
 
 	for {
-		arguments = append(arguments, parser.parseExpression(context, Lowest))
+		arguments = append(arguments, parser.parseExpression(context, ExpressionLowest))
 		if parser.peek().Type == token.Comma {
 			parser.consume()
 			parser.consume()

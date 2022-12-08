@@ -19,6 +19,10 @@ func Eval(node parser.Node, environment *Environment) Object {
 		return &IntegerObject{Value: node.Value}
 	case *parser.BooleanLiteral:
 		return &BooleanObject{Value: node.Value}
+	case *parser.NullLiteral:
+		return &NullObject{}
+	case *parser.VoidLiteral:
+		return nil
 	case *parser.Identifier:
 		return evalIdentifierExpression(node, environment)
 	case *parser.InfixExpression:
@@ -45,8 +49,6 @@ func Eval(node parser.Node, environment *Environment) Object {
 		return evalIncrementExpression(node, environment)
 	case *parser.MemberAccessExpression:
 		return evalMemberAccessExpression(node, environment)
-	case nil:
-		return nil
 	}
 	return NewError("Unknown node (%T)", node)
 }
@@ -279,10 +281,11 @@ func evalIfStatement(ifStatement *parser.IfStatement, environment *Environment) 
 		return condition
 	}
 	if implicitBoolConversion(condition) {
-		return Eval(ifStatement.Statement, ExtendEnvironment(environment))
-	} else {
-		return Eval(ifStatement.Alternative, ExtendEnvironment(environment))
+		Eval(ifStatement.Statement, ExtendEnvironment(environment))
+	} else if ifStatement.Alternative != nil {
+		Eval(ifStatement.Alternative, ExtendEnvironment(environment))
 	}
+	return nil
 }
 
 func evalWhileStatement(whileStatement *parser.WhileStatement, environment *Environment) Object {

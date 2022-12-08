@@ -3,16 +3,13 @@ package parser
 import (
 	"bananascript/src/lexer"
 	"bananascript/src/token"
-	"bananascript/src/types"
 	"reflect"
 )
 
 type Parser struct {
-	errors               []*Error
-	tokens               []*token.Token
-	position             int
-	prefixParseFunctions map[token.Type]func(*Context) Expression
-	infixParseFunctions  map[token.Type]func(*Context, Expression) Expression
+	errors   []*Error
+	tokens   []*token.Token
+	position int
 }
 
 func New(lexer *lexer.Lexer) *Parser {
@@ -27,6 +24,7 @@ func New(lexer *lexer.Lexer) *Parser {
 
 	parser := &Parser{tokens: tokens}
 	parser.registerExpressionParseFunctions()
+	parser.registerTypeParseFunctions()
 	return parser
 }
 
@@ -101,7 +99,7 @@ func (parser *Parser) doesReturn(context *Context, statement Statement) bool {
 	case *ReturnStatement:
 		if context.returnType != nil {
 			if !isNever(context.returnType) {
-				returnType := statement.Expression.Type(context)
+				returnType := parser.getExpressionType(statement.Expression, context)
 				if !isNever(returnType) && !context.returnType.IsAssignable(returnType) {
 					parser.error(statement.ReturnToken, "Type '%s' is not assignable to '%s'", returnType.ToString(),
 						context.returnType.ToString())
@@ -129,7 +127,7 @@ func (parser *Parser) doesReturn(context *Context, statement Statement) bool {
 	return false
 }
 
-func (parser *Parser) parseParameterList() []*Parameter {
+func (parser *Parser) parseParameterList(context *Context) []*Parameter {
 
 	parameters := make([]*Parameter, 0)
 	if parser.peek().Type == token.RParen {
@@ -138,7 +136,7 @@ func (parser *Parser) parseParameterList() []*Parameter {
 	}
 
 	for {
-		parameter := parser.parseParameter()
+		parameter := parser.parseParameter(context)
 		if parameter == nil {
 			return nil
 		}
@@ -156,7 +154,7 @@ func (parser *Parser) parseParameterList() []*Parameter {
 	return parameters
 }
 
-func (parser *Parser) parseParameter() *Parameter {
+func (parser *Parser) parseParameter(context *Context) *Parameter {
 
 	if !parser.assertNext(token.Ident) {
 		return nil
@@ -168,78 +166,8 @@ func (parser *Parser) parseParameter() *Parameter {
 		return nil
 	}
 
-	theType := parser.parseType()
-	if theType == nil {
-		return nil
-	}
+	parser.consume()
+	theType := parser.parseType(context, TypeLowest)
 
 	return &Parameter{Token: identToken, Name: ident, Type: theType}
-}
-
-func (parser *Parser) parseType() types.Type {
-
-	next := parser.peek()
-	var currentType types.Type
-
-	switch next.Type {
-	case token.Ident:
-		parser.consume()
-		typeName := parser.current().Literal
-		switch typeName {
-		case types.TypeString:
-			currentType = &types.StringType{}
-		case types.TypeBool:
-			currentType = &types.BoolType{}
-		case types.TypeInt:
-			currentType = &types.IntType{}
-		default:
-			currentType = newNever("Unknown type '%s'", typeName)
-		}
-	case token.Null:
-		parser.consume()
-		currentType = &types.NullType{}
-	case token.Void:
-		parser.consume()
-		currentType = &types.VoidType{}
-	case token.Func:
-		parser.consume()
-		if !parser.assertNext(token.LParen) {
-			return nil
-		}
-		parameterTypes := make([]types.Type, 0)
-		if parser.peek().Type != token.RParen {
-			for {
-				parameterType := parser.parseType()
-				if parameterType == nil {
-					return nil
-				}
-				parameterTypes = append(parameterTypes, parameterType)
-				if parser.peek().Type == token.Comma {
-					parser.consume()
-				} else {
-					break
-				}
-			}
-		}
-		if !parser.assertNext(token.RParen) {
-			return nil
-		}
-		returnType := parser.parseType()
-		if returnType == nil {
-			returnType = &types.VoidType{}
-		}
-		return &types.FunctionType{
-			ParameterTypes: parameterTypes,
-			ReturnType:     returnType,
-		}
-	default:
-		return nil
-	}
-
-	if parser.peek().Type == token.Qmark {
-		parser.consume()
-		currentType = types.NewOptional(currentType)
-	}
-
-	return currentType
 }

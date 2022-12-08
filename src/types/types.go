@@ -15,14 +15,13 @@ type Type interface {
 }
 
 type NeverType struct {
-	Message string
 }
 
 func (neverType *NeverType) ToString() string {
 	return TypeNever
 }
 
-func (neverType *NeverType) IsAssignable(_ Type) bool {
+func (neverType *NeverType) IsAssignable(Type) bool {
 	return false
 }
 
@@ -125,15 +124,6 @@ func (optional *Optional) IsAssignable(other Type) bool {
 		return true
 	default:
 		return false
-	}
-}
-
-func NewOptional(base Type) Type {
-	switch base.(type) {
-	case *NeverType, *NullType, *VoidType:
-		return base
-	default:
-		return &Optional{Base: base}
 	}
 }
 

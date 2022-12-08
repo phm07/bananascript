@@ -8,7 +8,6 @@ type ContextStore map[types.Type]SubContext
 
 type Context struct {
 	parent     *Context
-	parentType types.Type
 	store      ContextStore
 	returnType types.Type
 }
@@ -23,7 +22,6 @@ func ExtendContext(parent *Context) *Context {
 
 func NewSubContext(context *Context, parentType types.Type) *Context {
 	newContext := NewContext()
-	newContext.parentType = parentType
 	newContext.store[nil] = make(SubContext)
 	currentContext := context
 	for currentContext != nil {

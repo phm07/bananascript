@@ -30,7 +30,6 @@ func runFile(fileName string) {
 	context, environment := builtins.NewContextAndEnvironment()
 
 	program, errors := theParser.ParseProgram(context)
-	fmt.Println()
 	if len(errors) > 0 {
 		errorStr := "Encountered %d error"
 		if len(errors) > 1 {

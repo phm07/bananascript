@@ -88,3 +88,10 @@ type BooleanObject struct {
 func (booleanObject *BooleanObject) ToString() string {
 	return strconv.FormatBool(booleanObject.Value)
 }
+
+type NullObject struct {
+}
+
+func (nullObject *NullObject) ToString() string {
+	return "null"
+}

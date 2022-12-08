@@ -18,7 +18,6 @@ type Statement interface {
 
 type Expression interface {
 	Node
-	Type(*Context) types.Type
 }
 
 type Program struct {
@@ -318,14 +317,14 @@ func (whileStatement *WhileStatement) ToString() string {
 }
 
 type IncrementExpression struct {
-	IdentToken *token.Token
-	Operator   token.Type
-	Name       *Identifier
-	Pre        bool
+	OperatorToken *token.Token
+	Operator      token.Type
+	Name          *Identifier
+	Pre           bool
 }
 
 func (incrementExpression *IncrementExpression) Token() *token.Token {
-	return incrementExpression.IdentToken
+	return incrementExpression.OperatorToken
 }
 
 func (incrementExpression *IncrementExpression) ToString() string {

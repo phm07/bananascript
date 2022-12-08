@@ -27,7 +27,8 @@ func (parser *Parser) parseStatement(context *Context) Statement {
 
 func (parser *Parser) parseExpressionStatement(context *Context) *ExpressionStatement {
 	statement := &ExpressionStatement{}
-	statement.Expression = parser.parseExpression(context, Lowest)
+	statement.Expression = parser.parseExpression(context, ExpressionLowest)
+	parser.getExpressionType(statement.Expression, context) // check for errors
 
 	if !isInvalid(statement.Expression) {
 		parser.assertNext(token.Semi)
@@ -44,7 +45,7 @@ func (parser *Parser) parseReturnStatement(context *Context) *ReturnStatement {
 		return statement
 	}
 
-	statement.Expression = parser.parseExpression(context, Lowest)
+	statement.Expression = parser.parseExpression(context, ExpressionLowest)
 	if !parser.assertNext(token.Semi) {
 		return nil
 	}
@@ -86,19 +87,13 @@ func (parser *Parser) parseLetStatement(context *Context) *LetStatement {
 
 	identToken := parser.current()
 	name := identToken.Literal
-	statement.Name = &Identifier{IdentToken: parser.current(), Value: name}
+	statement.Name = &Identifier{IdentToken: identToken, Value: name}
 	assignmentToken := token.Define
 
 	if parser.peek().Type == token.Colon {
 		parser.consume()
-		typeToken := parser.peek()
-		statement.Type = parser.parseType()
-		if statement.Type == nil {
-			return nil
-		}
-		if never, isNever := statement.Type.(*types.NeverType); isNever {
-			parser.error(typeToken, never.Message)
-		}
+		parser.consume()
+		statement.Type = parser.parseType(context, TypeLowest)
 		assignmentToken = token.Assign
 	}
 
@@ -107,7 +102,7 @@ func (parser *Parser) parseLetStatement(context *Context) *LetStatement {
 			return nil
 		}
 		parser.consume()
-		statement.Value = parser.parseExpression(context, Lowest)
+		statement.Value = parser.parseExpression(context, ExpressionLowest)
 	} else {
 		statement.Value = &NullLiteral{}
 	}
@@ -116,7 +111,7 @@ func (parser *Parser) parseLetStatement(context *Context) *LetStatement {
 		return nil
 	}
 
-	inferredType := statement.Value.Type(context)
+	inferredType := parser.getExpressionType(statement.Value, context)
 	if statement.Type == nil {
 		statement.Type = inferredType
 	} else if !statement.Type.IsAssignable(inferredType) {
@@ -124,11 +119,10 @@ func (parser *Parser) parseLetStatement(context *Context) *LetStatement {
 		if erroneousToken == nil {
 			erroneousToken = parser.current()
 		}
-		if !isNever(statement.Type) {
+		if !isNever(statement.Type) && !isNever(inferredType) {
 			parser.error(erroneousToken, "Type '%s' is not assignable to '%s'", inferredType.ToString(),
 				statement.Type.ToString())
 		}
-		return nil
 	}
 
 	_, ok := context.Define(name, statement.Type, nil)
@@ -144,10 +138,7 @@ func (parser *Parser) parseFunctionDefinitionStatement(context *Context) *Functi
 
 	if parser.peek().Type == token.LParen {
 		parser.consume()
-		statement.ThisType = parser.parseType()
-		if statement.ThisType == nil {
-			return nil
-		}
+		statement.ThisType = parser.parseType(context, TypeLowest)
 		if !parser.assertNext(token.RParen) || !parser.assertNext(token.DoubleColon) {
 			return nil
 		}
@@ -164,17 +155,17 @@ func (parser *Parser) parseFunctionDefinitionStatement(context *Context) *Functi
 		return nil
 	}
 
-	statement.Parameters = parser.parseParameterList()
+	statement.Parameters = parser.parseParameterList(context)
 	if statement.Parameters == nil {
 		return nil
 	}
+	parser.consume()
 
-	if parser.peek().Type == token.LBrace {
-		parser.consume()
+	if parser.current().Type == token.LBrace {
 		statement.ReturnType = &types.VoidType{}
 	} else {
-		statement.ReturnType = parser.parseType()
-		if statement.ReturnType == nil || !parser.assertNext(token.LBrace) {
+		statement.ReturnType = parser.parseType(context, TypeLowest)
+		if !parser.assertNext(token.LBrace) {
 			return nil
 		}
 	}
@@ -224,7 +215,7 @@ func (parser *Parser) parseIfStatement(context *Context) *IfStatement {
 
 	statement := &IfStatement{IfToken: parser.consume()}
 
-	statement.Condition = parser.parseExpression(context, Lowest)
+	statement.Condition = parser.parseExpression(context, ExpressionLowest)
 	parser.consume()
 
 	statement.Statement = parser.parseStatement(ExtendContext(context))
@@ -242,7 +233,7 @@ func (parser *Parser) parseWhileStatement(context *Context) *WhileStatement {
 
 	statement := &WhileStatement{WhileToken: parser.consume()}
 
-	statement.Condition = parser.parseExpression(context, Lowest)
+	statement.Condition = parser.parseExpression(context, ExpressionLowest)
 	parser.consume()
 
 	statement.Statement = parser.parseStatement(ExtendContext(context))
