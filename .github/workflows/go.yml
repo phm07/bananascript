@@ -18,6 +18,9 @@ jobs:
       with:
         go-version: 1.18
 
+    - name: Run unit tests
+      run: "go test ./..."
+
     - name: Build all platforms
       run: |
         dirname="/var/www/builds/$(date '+%F_%H-%M-%S')"

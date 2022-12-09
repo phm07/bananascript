@@ -132,7 +132,8 @@ func (parser *Parser) getCallExpressionType(callExpression *CallExpression, cont
 				}
 			}
 		} else {
-			parser.error(callExpression.ParenToken, "Mismatching amount of arguments (%d vs %d)", len(callExpression.Arguments))
+			parser.error(callExpression.ParenToken, "Mismatching amount of arguments (%d vs %d)",
+				len(callExpression.Arguments), len(functionType.ParameterTypes))
 		}
 		return functionType.ReturnType
 	default:

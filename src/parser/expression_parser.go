@@ -208,7 +208,7 @@ func (parser *Parser) parseCallExpression(context *Context, function Expression)
 	argumentList := parser.parseArgumentList(context)
 
 	if argumentList == nil {
-		return &InvalidExpression{}
+		return &InvalidExpression{currentToken}
 	}
 
 	for _, argument := range argumentList {

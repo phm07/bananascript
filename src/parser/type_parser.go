@@ -92,6 +92,7 @@ func (parser *Parser) parseFunctionTypeLiteral(context *Context) types.Type {
 	parameterTypes := make([]types.Type, 0)
 	if parser.peek().Type != token.RParen {
 		for {
+			parser.consume()
 			parameterType := parser.parseType(context, TypeLowest)
 			parameterTypes = append(parameterTypes, parameterType)
 			if parser.peek().Type == token.Comma {
@@ -104,6 +105,7 @@ func (parser *Parser) parseFunctionTypeLiteral(context *Context) types.Type {
 	if !parser.assertNext(token.RParen) {
 		return &types.NeverType{}
 	}
+	parser.consume()
 	returnType := parser.parseType(context, TypeLowest)
 	return &types.FunctionType{
 		ParameterTypes: parameterTypes,
