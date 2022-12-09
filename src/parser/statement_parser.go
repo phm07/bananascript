@@ -216,6 +216,7 @@ func (parser *Parser) parseIfStatement(context *Context) *IfStatement {
 	statement := &IfStatement{IfToken: parser.consume()}
 
 	statement.Condition = parser.parseExpression(context, ExpressionLowest)
+	parser.getExpressionType(statement.Condition, context) // check type
 	parser.consume()
 
 	statement.Statement = parser.parseStatement(ExtendContext(context))
@@ -234,6 +235,7 @@ func (parser *Parser) parseWhileStatement(context *Context) *WhileStatement {
 	statement := &WhileStatement{WhileToken: parser.consume()}
 
 	statement.Condition = parser.parseExpression(context, ExpressionLowest)
+	parser.getExpressionType(statement.Condition, context) // check type
 	parser.consume()
 
 	statement.Statement = parser.parseStatement(ExtendContext(context))
