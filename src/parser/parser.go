@@ -1,13 +1,14 @@
 package parser
 
 import (
+	"bananascript/src/errors"
 	"bananascript/src/lexer"
 	"bananascript/src/token"
 	"reflect"
 )
 
 type Parser struct {
-	errors   []*Error
+	errors   []*errors.ParserError
 	tokens   []*token.Token
 	position int
 }
@@ -22,14 +23,14 @@ func New(lexer *lexer.Lexer) *Parser {
 		}
 	}
 
-	parser := &Parser{tokens: tokens}
+	parser := &Parser{tokens: tokens, errors: lexer.Errors}
 	parser.registerExpressionParseFunctions()
 	parser.registerTypeParseFunctions()
 	return parser
 }
 
 func (parser *Parser) error(token *token.Token, messageFormat string, args ...interface{}) {
-	parser.errors = append(parser.errors, NewError(token, messageFormat, args...))
+	parser.errors = append(parser.errors, errors.NewFromToken(token, messageFormat, args...))
 }
 
 func (parser *Parser) current() *token.Token {
@@ -65,13 +66,13 @@ func (parser *Parser) assertNext(tokenType token.Type) bool {
 	}
 }
 
-func (parser *Parser) ParseProgram(context *Context) (*Program, []*Error) {
+func (parser *Parser) ParseProgram(context *Context) (*Program, []*errors.ParserError) {
 
 	program := &Program{}
 	program.Statements = []Statement{}
 
 	for parser.current().Type != token.EOF {
-		if parser.current().Type == token.Semi {
+		if parser.current().Type == token.Semi || parser.current().Type == token.Illegal {
 			parser.consume()
 			continue
 		}
@@ -85,7 +86,6 @@ func (parser *Parser) ParseProgram(context *Context) (*Program, []*Error) {
 	}
 
 	parser.doesReturn(context, program)
-	parser.errors = removeDuplicateErrors(parser.errors)
 	return program, parser.errors
 }
 

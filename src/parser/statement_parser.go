@@ -58,7 +58,7 @@ func (parser *Parser) parseBlockStatement(context *Context) *BlockStatement {
 	statements := make([]Statement, 0)
 
 	for parser.current().Type != token.EOF && parser.current().Type != token.RBrace {
-		if parser.current().Type == token.Semi {
+		if parser.current().Type == token.Semi || parser.current().Type == token.Illegal {
 			parser.consume()
 			continue
 		}

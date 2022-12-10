@@ -87,7 +87,9 @@ func (parser *Parser) parseExpression(context *Context, precedence ExpressionPre
 	currentToken := parser.current()
 	prefixFunction := prefixExpressionParseFunctions[currentToken.Type]
 	if prefixFunction == nil {
-		parser.error(currentToken, "Unexpected %s", currentToken.ToString())
+		if currentToken.Type != token.Illegal {
+			parser.error(currentToken, "Unexpected %s", currentToken.ToString())
+		}
 		return &InvalidExpression{currentToken}
 	}
 

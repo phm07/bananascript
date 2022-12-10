@@ -39,7 +39,9 @@ func (parser *Parser) parseType(context *Context, precedence TypePrecedence) typ
 	currentToken := parser.current()
 	prefixFunction := prefixTypeParseFunctions[currentToken.Type]
 	if prefixFunction == nil {
-		parser.error(currentToken, "Unexpected %s", currentToken.ToString())
+		if currentToken.Type != token.Illegal {
+			parser.error(currentToken, "Unexpected %s", currentToken.ToString())
+		}
 		return &types.NeverType{}
 	}
 

@@ -1,17 +1,21 @@
 package lexer
 
 import (
+	"bananascript/src/errors"
 	"bananascript/src/token"
 	"os"
 	"path/filepath"
+	"strconv"
 )
 
 type Lexer struct {
-	input    string
-	position int
-	line     int
-	col      int
-	filePath *string
+	Errors         []*errors.ParserError
+	input          string
+	position       int
+	line           int
+	col            int
+	filePath       *string
+	lastWasIllegal bool
 }
 
 func FromFile(fileName string) (*Lexer, error) {
@@ -26,11 +30,11 @@ func FromFile(fileName string) (*Lexer, error) {
 	}
 
 	input := string(bytes)
-	return &Lexer{input: input, line: 1, filePath: &filePathAbsolute}, nil
+	return &Lexer{input: input, line: 1, filePath: &filePathAbsolute, Errors: make([]*errors.ParserError, 0)}, nil
 }
 
 func FromCode(input string) *Lexer {
-	return &Lexer{input: input, line: 1}
+	return &Lexer{input: input, line: 1, Errors: make([]*errors.ParserError, 0)}
 }
 
 func (lexer *Lexer) current() byte {
@@ -155,18 +159,7 @@ func (lexer *Lexer) NextToken() *token.Token {
 	case '}':
 		return lexer.newToken(token.RBrace, "", startCol)
 	case '"':
-		start := lexer.position
-		for !endsString(lexer.current()) {
-			lexer.consume()
-		}
-		end := lexer.position
-		if lexer.consume() == '"' {
-			literal := lexer.input[start:end]
-			return lexer.newToken(token.StringLiteral, literal, startCol)
-		} else {
-			literal := lexer.input[(start - 1):end]
-			return lexer.newToken(token.Illegal, literal, startCol)
-		}
+		return lexer.parseString(startCol)
 	}
 
 	if isIdent(char) {
@@ -189,7 +182,110 @@ func (lexer *Lexer) NextToken() *token.Token {
 		return lexer.newToken(token.IntLiteral, integer, startCol)
 
 	} else {
+		if !lexer.lastWasIllegal {
+			lexer.error(startCol, "Illegal token")
+		}
 		return lexer.newToken(token.Illegal, string(char), startCol)
+	}
+}
+
+func (lexer *Lexer) parseString(stringStartCol int) *token.Token {
+	literal := ""
+
+parseChar:
+	for {
+		startCol := lexer.position
+		current := lexer.consume()
+		if current == '"' || current == '\n' || current == 0 {
+			if current == '\n' || current == 0 {
+				lexer.error(startCol+1, "Unclosed string literal")
+			}
+			return lexer.newToken(token.StringLiteral, literal, stringStartCol)
+		}
+		toAdd := string(current)
+		if current == '\\' {
+			switch next := lexer.consume(); next {
+			case '\\':
+				toAdd = "\\"
+			case '"':
+				toAdd = "\""
+			case '\'':
+				toAdd = "'"
+			case 'a':
+				toAdd = "\a"
+			case 'b':
+				toAdd = "\b"
+			case 'f':
+				toAdd = "\f"
+			case 'n':
+				toAdd = "\n"
+			case 'r':
+				toAdd = "\r"
+			case 't':
+				toAdd = "\t"
+			case 'v':
+				toAdd = "\v"
+			case 'x':
+				hex := ""
+				for {
+					current := lexer.current()
+					if isHex(current) {
+						hex += string(current)
+						lexer.consume()
+					} else {
+						break
+					}
+				}
+				value, err := strconv.ParseInt(hex, 16, 64)
+				if err != nil {
+					lexer.error(startCol, "Invalid hexadecimal (%s)", hex)
+				} else {
+					toAdd = string(rune(value))
+				}
+			case 'u', 'U':
+				nDigits := 4
+				if next == 'U' {
+					nDigits = 8
+				}
+				hex := ""
+				for i := 0; i < nDigits; i++ {
+					current := lexer.current()
+					if !isHex(current) {
+						lexer.error(startCol, "Invalid unicode sequence (%s)", hex)
+						continue parseChar
+					}
+					lexer.consume()
+					hex += string(current)
+				}
+				value, err := strconv.ParseInt(hex, 16, nDigits*8)
+				if err != nil {
+					lexer.error(startCol, "Invalid unicode sequence (%s)", hex)
+				} else {
+					toAdd = string(rune(value))
+				}
+			default:
+				if next >= '0' && next <= '8' {
+					octal := string(next)
+					for i := 0; i < 2; i++ {
+						current := lexer.current()
+						if current >= '0' && current <= '8' {
+							octal += string(current)
+							lexer.consume()
+						} else {
+							break
+						}
+					}
+					value, err := strconv.ParseInt(octal, 8, 16)
+					if err != nil {
+						lexer.error(startCol, "Invalid octal (%s)", octal)
+					} else {
+						toAdd = string(rune(value))
+					}
+				}
+				lexer.error(startCol, "Invalid escape sequence")
+			}
+		}
+		literal += toAdd
 	}
 }
 
@@ -213,10 +309,6 @@ func (lexer *Lexer) eatComment() {
 	lexer.consume() // /
 }
 
-func endsString(char byte) bool {
-	return char == '"' || char == '\n' || char == 0
-}
-
 func isWhitespace(char byte) bool {
 	return char == ' ' || char == '\t' || char == '\r' || char == '\v' || char == '\f' || char == '\n'
 }
@@ -229,6 +321,15 @@ func isDigit(char byte) bool {
 	return char >= '0' && char <= '9'
 }
 
+func isHex(char byte) bool {
+	return (char >= '0' && char <= '9') || (char >= 'a' && char <= 'f') || (char >= 'A' && char <= 'F')
+}
+
+func (lexer *Lexer) error(startCol int, messageFormat string, args ...interface{}) {
+	lexer.Errors = append(lexer.Errors, errors.New(lexer.line, startCol, lexer.filePath, messageFormat, args...))
+}
+
 func (lexer *Lexer) newToken(tokenType token.Type, literal string, startCol int) *token.Token {
+	lexer.lastWasIllegal = tokenType == token.Illegal
 	return token.New(tokenType, literal, lexer.line, startCol, lexer.filePath)
 }
