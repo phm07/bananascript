@@ -79,6 +79,17 @@ func TestLexer(t *testing.T) {
 			File:    nil,
 		},
 	)
+
+	assertToken(t,
+		"\"你好世界\"",
+		&token.Token{
+			Type:    token.StringLiteral,
+			Literal: "你好世界",
+			Line:    1,
+			Col:     1,
+			File:    nil,
+		},
+	)
 }
 
 func assertTypes(t *testing.T, input string, expectedTypes []token.Type) {

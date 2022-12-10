@@ -153,7 +153,7 @@ var builtinTypeMembers = map[types.Type]map[string]*Builtin{
 			},
 			Object: &BuiltinFunction{
 				Executor: func(this evaluator.Object, _ []evaluator.Object) evaluator.Object {
-					return &evaluator.IntegerObject{Value: int64(len(this.ToString()))}
+					return &evaluator.IntegerObject{Value: int64(len([]rune(this.ToString())))}
 				},
 			},
 		},

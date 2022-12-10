@@ -10,7 +10,7 @@ import (
 
 type Lexer struct {
 	Errors         []*errors.ParserError
-	input          string
+	input          []rune
 	position       int
 	line           int
 	col            int
@@ -30,14 +30,14 @@ func FromFile(fileName string) (*Lexer, error) {
 	}
 
 	input := string(bytes)
-	return &Lexer{input: input, line: 1, filePath: &filePathAbsolute, Errors: make([]*errors.ParserError, 0)}, nil
+	return &Lexer{input: []rune(input), line: 1, filePath: &filePathAbsolute, Errors: make([]*errors.ParserError, 0)}, nil
 }
 
 func FromCode(input string) *Lexer {
-	return &Lexer{input: input, line: 1, Errors: make([]*errors.ParserError, 0)}
+	return &Lexer{input: []rune(input), line: 1, Errors: make([]*errors.ParserError, 0)}
 }
 
-func (lexer *Lexer) current() byte {
+func (lexer *Lexer) current() rune {
 	if lexer.position < len(lexer.input) {
 		return lexer.input[lexer.position]
 	} else {
@@ -45,7 +45,7 @@ func (lexer *Lexer) current() byte {
 	}
 }
 
-func (lexer *Lexer) consume() byte {
+func (lexer *Lexer) consume() rune {
 	ch := lexer.current()
 	lexer.position++
 	if ch == '\n' {
@@ -57,7 +57,7 @@ func (lexer *Lexer) consume() byte {
 	return ch
 }
 
-func (lexer *Lexer) peek() byte {
+func (lexer *Lexer) peek() rune {
 	if lexer.position+1 < len(lexer.input) {
 		return lexer.input[lexer.position+1]
 	} else {
@@ -167,7 +167,7 @@ func (lexer *Lexer) NextToken() *token.Token {
 		for isIdent(lexer.current()) || isDigit(lexer.current()) {
 			lexer.consume()
 		}
-		ident := lexer.input[start:lexer.position]
+		ident := string(lexer.input[start:lexer.position])
 		if tokenType, exists := token.Keywords[ident]; exists {
 			return lexer.newToken(tokenType, "", startCol)
 		}
@@ -178,7 +178,7 @@ func (lexer *Lexer) NextToken() *token.Token {
 		for isDigit(lexer.current()) {
 			lexer.consume()
 		}
-		integer := lexer.input[start:lexer.position]
+		integer := string(lexer.input[start:lexer.position])
 		return lexer.newToken(token.IntLiteral, integer, startCol)
 
 	} else {
@@ -309,19 +309,19 @@ func (lexer *Lexer) eatComment() {
 	lexer.consume() // /
 }
 
-func isWhitespace(char byte) bool {
+func isWhitespace(char rune) bool {
 	return char == ' ' || char == '\t' || char == '\r' || char == '\v' || char == '\f' || char == '\n'
 }
 
-func isIdent(char byte) bool {
+func isIdent(char rune) bool {
 	return (char >= 'A' && char <= 'Z') || (char >= 'a' && char <= 'z') || char == '_'
 }
 
-func isDigit(char byte) bool {
+func isDigit(char rune) bool {
 	return char >= '0' && char <= '9'
 }
 
-func isHex(char byte) bool {
+func isHex(char rune) bool {
 	return (char >= '0' && char <= '9') || (char >= 'a' && char <= 'f') || (char >= 'A' && char <= 'F')
 }
 
