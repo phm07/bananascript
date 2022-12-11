@@ -49,6 +49,8 @@ func Eval(node parser.Node, environment *Environment) Object {
 		return evalIncrementExpression(node, environment)
 	case *parser.MemberAccessExpression:
 		return evalMemberAccessExpression(node, environment)
+	case *parser.TypeDefinitionStatement:
+		return nil
 	}
 	return NewError("Unknown node (%T)", node)
 }

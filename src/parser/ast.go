@@ -353,3 +353,17 @@ func (memberAccessExpression *MemberAccessExpression) Token() *token.Token {
 func (memberAccessExpression *MemberAccessExpression) ToString() string {
 	return memberAccessExpression.Expression.ToString() + "." + memberAccessExpression.Member.Value
 }
+
+type TypeDefinitionStatement struct {
+	IdentToken *token.Token
+	Name       *Identifier
+	Type       types.Type
+}
+
+func (typeDefinitionStatement *TypeDefinitionStatement) Token() *token.Token {
+	return typeDefinitionStatement.IdentToken
+}
+
+func (typeDefinitionStatement *TypeDefinitionStatement) ToString() string {
+	return fmt.Sprintf("type %s := %s;", typeDefinitionStatement.Name.Value, typeDefinitionStatement.Type.ToString())
+}

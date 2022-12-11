@@ -39,7 +39,7 @@ func (parser *Parser) getExpressionType(expression Expression, context *Context)
 }
 
 func (parser *Parser) getIdentifierType(identifier *Identifier, context *Context) types.Type {
-	theType, ok := context.GetType(identifier.Value, nil)
+	theType, ok := context.Get(identifier.Value, nil)
 	if !ok {
 		parser.error(identifier.IdentToken, "Cannot resolve reference to '%s'", identifier.Value)
 		return &types.NeverType{}
@@ -158,7 +158,7 @@ func (parser *Parser) getMemberAccessExpressionType(memberAccessExpression *Memb
 	if isNever(memberAccessExpression.ParentType) {
 		return memberAccessExpression.ParentType
 	}
-	if memberType, ok := context.GetType(memberAccessExpression.Member.Value, memberAccessExpression.ParentType); ok {
+	if memberType, ok := context.Get(memberAccessExpression.Member.Value, memberAccessExpression.ParentType); ok {
 		return memberType
 	} else {
 		parser.error(memberAccessExpression.DotToken, "Member '%s' does not exist on '%s'",

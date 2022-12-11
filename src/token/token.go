@@ -56,6 +56,7 @@ const (
 	LBrace
 	RBrace
 
+	TypeDef
 	Func
 	Return
 	Let
@@ -84,6 +85,7 @@ var Keywords = map[string]Type{
 	"else":   Else,
 	"for":    For,
 	"while":  While,
+	"type":   TypeDef,
 }
 
 func (token Token) ToString() string {
@@ -126,6 +128,7 @@ func (tokenType Type) ToString() string {
 		"{",
 		"}",
 		"FUNC",
+		"TYPE",
 		"RETURN",
 		"LET",
 		"CONST",
@@ -176,6 +179,7 @@ func (tokenType Type) ToStringHumanReadable() string {
 		"'{'",
 		"'}'",
 		"'fn'",
+		"'type'",
 		"'return'",
 		"'let'",
 		"'const'",

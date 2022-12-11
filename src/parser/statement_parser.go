@@ -20,6 +20,8 @@ func (parser *Parser) parseStatement(context *Context) Statement {
 		return parser.parseIfStatement(context)
 	case token.While:
 		return parser.parseWhileStatement(context)
+	case token.TypeDef:
+		return parser.parseTypeDefinitionStatement(context)
 	default:
 		return parser.parseExpressionStatement(context)
 	}
@@ -46,9 +48,7 @@ func (parser *Parser) parseReturnStatement(context *Context) *ReturnStatement {
 	}
 
 	statement.Expression = parser.parseExpression(context, ExpressionLowest)
-	if !parser.assertNext(token.Semi) {
-		return nil
-	}
+	parser.assertNext(token.Semi)
 	return statement
 }
 
@@ -107,9 +107,7 @@ func (parser *Parser) parseLetStatement(context *Context) *LetStatement {
 		statement.Value = &NullLiteral{}
 	}
 
-	if !parser.assertNext(token.Semi) {
-		return nil
-	}
+	parser.assertNext(token.Semi)
 
 	inferredType := parser.getExpressionType(statement.Value, context)
 	if statement.Type == nil {
@@ -240,5 +238,35 @@ func (parser *Parser) parseWhileStatement(context *Context) *WhileStatement {
 
 	statement.Statement = parser.parseStatement(ExtendContext(context))
 
+	return statement
+}
+
+func (parser *Parser) parseTypeDefinitionStatement(context *Context) *TypeDefinitionStatement {
+
+	if !parser.assertNext(token.Ident) {
+		return nil
+	}
+	identToken := parser.current()
+	name := identToken.Literal
+	ident := &Identifier{IdentToken: identToken, Value: name}
+
+	if !parser.assertNext(token.Define) {
+		return nil
+	}
+
+	parser.consume()
+	statement := &TypeDefinitionStatement{IdentToken: identToken, Name: ident}
+	statement.Type = parser.parseType(context, TypeLowest)
+
+	switch name {
+	case types.TypeNull, types.TypeVoid, types.TypeString, types.TypeInt, types.TypeBool:
+		parser.error(identToken, "Cannot re-declare primitive '%s'", name)
+	default:
+		if _, ok := context.DefineType(name, statement.Type); !ok {
+			parser.error(identToken, "Cannot re-declare type '%s'", name)
+		}
+	}
+
+	parser.assertNext(token.Semi)
 	return statement
 }

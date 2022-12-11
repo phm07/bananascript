@@ -62,7 +62,7 @@ func (parser *Parser) parseType(context *Context, precedence TypePrecedence) typ
 
 /** prefix types **/
 
-func (parser *Parser) parseTypeLiteral(*Context) types.Type {
+func (parser *Parser) parseTypeLiteral(context *Context) types.Type {
 	currentToken := parser.current()
 
 	switch currentToken.Type {
@@ -76,8 +76,12 @@ func (parser *Parser) parseTypeLiteral(*Context) types.Type {
 		case types.TypeInt:
 			return &types.IntType{}
 		default:
-			parser.error(currentToken, "Unknown type '%s'", typeName)
-			return &types.NeverType{}
+			theType, ok := context.GetType(typeName)
+			if !ok {
+				parser.error(currentToken, "Unknown type '%s'", typeName)
+				return &types.NeverType{}
+			}
+			return theType
 		}
 	case token.Null:
 		return &types.NullType{}

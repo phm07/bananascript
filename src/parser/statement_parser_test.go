@@ -47,11 +47,21 @@ func TestStatementParser(t *testing.T) {
 		},
 	)
 
+	assertStatement(t,
+		"type optionalString := string?;",
+		&TypeDefinitionStatement{
+			Name: &Identifier{Value: "optionalString"},
+			Type: &types.Optional{Base: &types.StringType{}},
+		},
+	)
+
 	assertError(t, "true / false;")
 	assertError(t, "if true * false {}")
 	assertError(t, "while \"a\" - 2 {}")
 	assertError(t, "fn test(noType) {}")
 	assertError(t, "fn noReturn() string {}")
+
+	assertNoError(t, "{ type str := string; let a: str = \"test\"; }")
 }
 
 func assertStatement(t *testing.T, input string, expected Statement) {
@@ -78,4 +88,15 @@ func assertError(t *testing.T, input string) {
 	theParser.parseStatement(context)
 
 	assert.Assert(t, len(theParser.errors) > 0)
+}
+
+func assertNoError(t *testing.T, input string) {
+
+	theLexer := lexer.FromCode(input)
+	theParser := New(theLexer)
+
+	context := NewContext()
+	theParser.parseStatement(context)
+
+	assert.Assert(t, len(theParser.errors) == 0)
 }

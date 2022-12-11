@@ -6,18 +6,21 @@ type SubContext map[string]types.Type
 
 type ContextStore map[types.Type]SubContext
 
+type TypeStore map[string]types.Type
+
 type Context struct {
 	parent     *Context
 	store      ContextStore
+	typeStore  TypeStore
 	returnType types.Type
 }
 
 func NewContext() *Context {
-	return &Context{store: make(ContextStore)}
+	return &Context{store: make(ContextStore), typeStore: make(TypeStore)}
 }
 
 func ExtendContext(parent *Context) *Context {
-	return &Context{parent: parent, store: make(ContextStore), returnType: parent.returnType}
+	return &Context{parent: parent, store: make(ContextStore), typeStore: make(TypeStore), returnType: parent.returnType}
 }
 
 func NewSubContext(context *Context, parentType types.Type) *Context {
@@ -66,10 +69,10 @@ func (context *Context) GetInThisScope(name string, parentType types.Type) (type
 	return nil, false
 }
 
-func (context *Context) GetType(name string, parentType types.Type) (types.Type, bool) {
+func (context *Context) Get(name string, parentType types.Type) (types.Type, bool) {
 	theType, ok := context.GetInThisScope(name, parentType)
 	if !ok && context.parent != nil {
-		return context.parent.GetType(name, parentType)
+		return context.parent.Get(name, parentType)
 	}
 	return theType, ok
 }
@@ -83,5 +86,26 @@ func (context *Context) Define(name string, theType types.Type, parentType types
 		context.store[parentType] = make(map[string]types.Type)
 	}
 	context.store[parentType][name] = theType
+	return theType, true
+}
+
+func (context *Context) GetTypeInThisScope(name string) (types.Type, bool) {
+	theType, ok := context.typeStore[name]
+	return theType, ok
+}
+
+func (context *Context) GetType(name string) (types.Type, bool) {
+	theType, ok := context.GetTypeInThisScope(name)
+	if !ok && context.parent != nil {
+		return context.parent.GetType(name)
+	}
+	return theType, ok
+}
+
+func (context *Context) DefineType(name string, theType types.Type) (types.Type, bool) {
+	if _, exists := context.GetTypeInThisScope(name); exists {
+		return nil, false
+	}
+	context.typeStore[name] = theType
 	return theType, true
 }
