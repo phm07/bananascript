@@ -1,6 +1,6 @@
 module bananascript
 
-go 1.17
+go 1.19
 
 require github.com/gookit/color v1.5.2
 
