@@ -3,6 +3,7 @@ package parser
 import (
 	"bananascript/src/lexer"
 	"bananascript/src/token"
+	"bananascript/src/types"
 	"github.com/google/go-cmp/cmp"
 	"gotest.tools/assert"
 	"testing"
@@ -78,7 +79,7 @@ func assertExpression(t *testing.T, input string, expected Expression) {
 	theLexer := lexer.FromCode(input)
 	parser := New(theLexer)
 
-	context := NewContext()
+	context := types.NewContext()
 	expression := parser.parseExpression(context, ExpressionLowest)
 
 	ignoreTokens := cmp.Comparer(func(t1, t2 *token.Token) bool {

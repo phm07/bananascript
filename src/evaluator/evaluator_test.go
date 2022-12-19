@@ -3,6 +3,7 @@ package evaluator
 import (
 	"bananascript/src/lexer"
 	"bananascript/src/parser"
+	"bananascript/src/types"
 	"gotest.tools/assert"
 	"testing"
 )
@@ -35,7 +36,8 @@ func assertObject(t *testing.T, input string, expected Object) {
 	theLexer := lexer.FromCode(input)
 	theParser := parser.New(theLexer)
 
-	context, environment := parser.NewContext(), NewEnvironment()
+	context := types.NewContext()
+	environment := NewEnvironment(context)
 	program, errors := theParser.ParseProgram(context)
 
 	if len(errors) > 0 {

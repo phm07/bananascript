@@ -22,6 +22,7 @@ type Expression interface {
 
 type Program struct {
 	Statements []Statement
+	Context    *types.Context
 }
 
 func (program *Program) Token() *token.Token {
@@ -214,12 +215,14 @@ func (voidLiteral *VoidLiteral) ToString() string {
 }
 
 type FunctionDefinitionStatement struct {
-	FuncToken  *token.Token
-	Name       *Identifier
-	Parameters []*Parameter
-	Body       *BlockStatement
-	ThisType   types.Type
-	ReturnType types.Type
+	FuncToken       *token.Token
+	Name            *Identifier
+	Parameters      []*Parameter
+	Body            *BlockStatement
+	FunctionContext *types.Context
+	ThisType        types.Type
+	ReturnType      types.Type
+	FunctionType    *types.Function
 }
 
 func (funcStatement *FunctionDefinitionStatement) Token() *token.Token {
@@ -269,6 +272,7 @@ type BlockStatement struct {
 	LBraceToken *token.Token
 	RBraceToken *token.Token
 	Statements  []Statement
+	Context     *types.Context
 }
 
 func (blockStatement *BlockStatement) Token() *token.Token {
@@ -284,10 +288,12 @@ func (blockStatement *BlockStatement) ToString() string {
 }
 
 type IfStatement struct {
-	IfToken     *token.Token
-	Condition   Expression
-	Statement   Statement
-	Alternative Statement
+	IfToken            *token.Token
+	Condition          Expression
+	Statement          Statement
+	StatementContext   *types.Context
+	Alternative        Statement
+	AlternativeContext *types.Context
 }
 
 func (ifStatement *IfStatement) Token() *token.Token {
@@ -303,9 +309,10 @@ func (ifStatement *IfStatement) ToString() string {
 }
 
 type WhileStatement struct {
-	WhileToken *token.Token
-	Condition  Expression
-	Statement  Statement
+	WhileToken       *token.Token
+	Condition        Expression
+	Statement        Statement
+	StatementContext *types.Context
 }
 
 func (whileStatement *WhileStatement) Token() *token.Token {
@@ -344,6 +351,7 @@ type MemberAccessExpression struct {
 	Expression Expression
 	Member     *Identifier
 	ParentType types.Type
+	MemberType types.Type
 }
 
 func (memberAccessExpression *MemberAccessExpression) Token() *token.Token {

@@ -4,6 +4,7 @@ import (
 	"bananascript/src/errors"
 	"bananascript/src/lexer"
 	"bananascript/src/token"
+	"bananascript/src/types"
 	"reflect"
 )
 
@@ -66,10 +67,11 @@ func (parser *Parser) assertNext(tokenType token.Type) bool {
 	}
 }
 
-func (parser *Parser) ParseProgram(context *Context) (*Program, []*errors.ParserError) {
+func (parser *Parser) ParseProgram(context *types.Context) (*Program, []*errors.ParserError) {
 
 	program := &Program{}
 	program.Statements = []Statement{}
+	program.Context = types.ExtendContext(context)
 
 	for parser.current().Type != token.EOF {
 		if parser.current().Type == token.Semi || parser.current().Type == token.Illegal {
@@ -77,7 +79,7 @@ func (parser *Parser) ParseProgram(context *Context) (*Program, []*errors.Parser
 			continue
 		}
 
-		statement := parser.parseStatement(context)
+		statement := parser.parseStatement(program.Context)
 
 		if statement != nil && !reflect.ValueOf(statement).IsNil() {
 			program.Statements = append(program.Statements, statement)
@@ -89,7 +91,7 @@ func (parser *Parser) ParseProgram(context *Context) (*Program, []*errors.Parser
 	return program, parser.errors
 }
 
-func (parser *Parser) doesReturn(context *Context, statement Statement) bool {
+func (parser *Parser) doesReturn(context *types.Context, statement Statement) bool {
 
 	switch statement := statement.(type) {
 	case *Program:
@@ -97,12 +99,12 @@ func (parser *Parser) doesReturn(context *Context, statement Statement) bool {
 			parser.doesReturn(context, statement)
 		}
 	case *ReturnStatement:
-		if context.returnType != nil {
-			if !isNever(context.returnType) {
+		if context.ReturnType != nil {
+			if !isNever(context.ReturnType) {
 				returnType := parser.getExpressionType(statement.Expression, context)
-				if !isNever(returnType) && !context.returnType.IsAssignable(returnType) {
+				if !isNever(returnType) && !context.ReturnType.IsAssignable(returnType, context) {
 					parser.error(statement.ReturnToken, "Type '%s' is not assignable to '%s'", returnType.ToString(),
-						context.returnType.ToString())
+						context.ReturnType.ToString())
 				}
 			}
 			return true
@@ -110,7 +112,7 @@ func (parser *Parser) doesReturn(context *Context, statement Statement) bool {
 			parser.error(statement.ReturnToken, "Illegal return statement")
 		}
 	case *BlockStatement:
-		newContext := ExtendContext(context)
+		newContext := types.ExtendContext(context)
 		returned := false
 		for _, statement := range statement.Statements {
 			if returned {
@@ -121,13 +123,13 @@ func (parser *Parser) doesReturn(context *Context, statement Statement) bool {
 		}
 		return returned
 	case *IfStatement:
-		return parser.doesReturn(ExtendContext(context), statement.Statement) &&
-			parser.doesReturn(ExtendContext(context), statement.Alternative)
+		return parser.doesReturn(types.ExtendContext(context), statement.Statement) &&
+			parser.doesReturn(types.ExtendContext(context), statement.Alternative)
 	}
 	return false
 }
 
-func (parser *Parser) parseParameterList(context *Context) []*Parameter {
+func (parser *Parser) parseParameterList(context *types.Context) []*Parameter {
 
 	parameters := make([]*Parameter, 0)
 	if parser.peek().Type == token.RParen {
@@ -154,7 +156,7 @@ func (parser *Parser) parseParameterList(context *Context) []*Parameter {
 	return parameters
 }
 
-func (parser *Parser) parseParameter(context *Context) *Parameter {
+func (parser *Parser) parseParameter(context *types.Context) *Parameter {
 
 	if !parser.assertNext(token.Ident) {
 		return nil

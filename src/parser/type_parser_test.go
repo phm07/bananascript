@@ -9,35 +9,35 @@ import (
 
 func TestTypeParser(t *testing.T) {
 
-	assertType(t, "string", &types.StringType{})
-	assertType(t, "bool", &types.BoolType{})
-	assertType(t, "int", &types.IntType{})
-	assertType(t, "null", &types.NullType{})
-	assertType(t, "void", &types.VoidType{})
-	assertType(t, "doesNotExist", &types.NeverType{})
+	assertType(t, "string", &types.String{})
+	assertType(t, "bool", &types.Bool{})
+	assertType(t, "int", &types.Int{})
+	assertType(t, "null", &types.Null{})
+	assertType(t, "void", &types.Void{})
+	assertType(t, "doesNotExist", &types.Never{})
 
-	assertType(t, "string?", &types.Optional{Base: &types.StringType{}})
-	assertType(t, "int?", &types.Optional{Base: &types.IntType{}})
-	assertType(t, "bool????", &types.Optional{Base: &types.BoolType{}})
+	assertType(t, "string?", &types.Optional{Base: &types.String{}})
+	assertType(t, "int?", &types.Optional{Base: &types.Int{}})
+	assertType(t, "bool????", &types.Optional{Base: &types.Bool{}})
 
 	assertType(t,
 		"fn(string, fn() void, bool?) int?",
-		&types.FunctionType{
+		&types.Function{
 			ParameterTypes: []types.Type{
-				&types.StringType{},
-				&types.FunctionType{
+				&types.String{},
+				&types.Function{
 					ParameterTypes: []types.Type{},
-					ReturnType:     &types.VoidType{},
+					ReturnType:     &types.Void{},
 				},
-				&types.Optional{Base: &types.BoolType{}},
+				&types.Optional{Base: &types.Bool{}},
 			},
-			ReturnType: &types.Optional{Base: &types.IntType{}},
+			ReturnType: &types.Optional{Base: &types.Int{}},
 		},
 	)
 
 	assertType(t,
 		"fn string",
-		&types.NeverType{},
+		&types.Never{},
 	)
 }
 
@@ -46,7 +46,7 @@ func assertType(t *testing.T, input string, expected types.Type) {
 	theLexer := lexer.FromCode(input)
 	parser := New(theLexer)
 
-	context := NewContext()
+	context := types.NewContext()
 	theType := parser.parseType(context, TypeLowest)
 
 	assert.DeepEqual(t, theType, expected)

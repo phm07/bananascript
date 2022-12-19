@@ -2,6 +2,7 @@ package parser
 
 import (
 	"bananascript/src/token"
+	"bananascript/src/types"
 	"strconv"
 )
 
@@ -40,8 +41,8 @@ var expressionPrecedences = map[token.Type]ExpressionPrecedence{
 	token.Dot:        ExpressionPostfix,
 }
 
-var prefixExpressionParseFunctions = make(map[token.Type]func(*Context) Expression)
-var infixExpressionParseFunctions = make(map[token.Type]func(*Context, Expression) Expression)
+var prefixExpressionParseFunctions = make(map[token.Type]func(*types.Context) Expression)
+var infixExpressionParseFunctions = make(map[token.Type]func(*types.Context, Expression) Expression)
 
 func getExpressionPrecedence(token *token.Token) ExpressionPrecedence {
 	if precedence, exists := expressionPrecedences[token.Type]; exists {
@@ -83,7 +84,7 @@ func (parser *Parser) registerExpressionParseFunctions() {
 	infixExpressionParseFunctions[token.Dot] = parser.parseMemberAccessExpression
 }
 
-func (parser *Parser) parseExpression(context *Context, precedence ExpressionPrecedence) Expression {
+func (parser *Parser) parseExpression(context *types.Context, precedence ExpressionPrecedence) Expression {
 	currentToken := parser.current()
 	prefixFunction := prefixExpressionParseFunctions[currentToken.Type]
 	if prefixFunction == nil {
@@ -110,7 +111,7 @@ func (parser *Parser) parseExpression(context *Context, precedence ExpressionPre
 
 /** prefix expressions **/
 
-func (parser *Parser) parsePrefixExpression(context *Context) Expression {
+func (parser *Parser) parsePrefixExpression(context *types.Context) Expression {
 	currentToken := parser.consume()
 	return &PrefixExpression{
 		PrefixToken: currentToken,
@@ -119,29 +120,29 @@ func (parser *Parser) parsePrefixExpression(context *Context) Expression {
 	}
 }
 
-func (parser *Parser) parseIdentifier(*Context) Expression {
+func (parser *Parser) parseIdentifier(*types.Context) Expression {
 	return &Identifier{IdentToken: parser.current(), Value: parser.current().Literal}
 }
 
-func (parser *Parser) parseStringLiteral(*Context) Expression {
+func (parser *Parser) parseStringLiteral(*types.Context) Expression {
 	currentToken := parser.current()
 	return &StringLiteral{LiteralToken: currentToken, Value: currentToken.Literal}
 }
 
-func (parser *Parser) parseBooleanLiteral(*Context) Expression {
+func (parser *Parser) parseBooleanLiteral(*types.Context) Expression {
 	currentToken := parser.current()
 	return &BooleanLiteral{LiteralToken: currentToken, Value: currentToken.Type == token.True}
 }
 
-func (parser *Parser) parseNullLiteral(*Context) Expression {
+func (parser *Parser) parseNullLiteral(*types.Context) Expression {
 	return &NullLiteral{LiteralToken: parser.current()}
 }
 
-func (parser *Parser) parseVoidLiteral(*Context) Expression {
+func (parser *Parser) parseVoidLiteral(*types.Context) Expression {
 	return &VoidLiteral{LiteralToken: parser.current()}
 }
 
-func (parser *Parser) parseIntegerLiteral(*Context) Expression {
+func (parser *Parser) parseIntegerLiteral(*types.Context) Expression {
 	currentToken := parser.current()
 	literal := &IntegerLiteral{LiteralToken: currentToken}
 
@@ -155,7 +156,7 @@ func (parser *Parser) parseIntegerLiteral(*Context) Expression {
 	return literal
 }
 
-func (parser *Parser) parseGroupedExpression(context *Context) Expression {
+func (parser *Parser) parseGroupedExpression(context *types.Context) Expression {
 	parser.consume()
 	expression := parser.parseExpression(context, ExpressionLowest)
 	if !parser.assertNext(token.RParen) {
@@ -164,7 +165,7 @@ func (parser *Parser) parseGroupedExpression(context *Context) Expression {
 	return expression
 }
 
-func (parser *Parser) parseIncrementPrefixExpression(context *Context) Expression {
+func (parser *Parser) parseIncrementPrefixExpression(context *types.Context) Expression {
 	operatorToken := parser.consume()
 	identExpression := parser.parseExpression(context, ExpressionPrefix)
 	return parser.parseIncrementExpression(operatorToken, identExpression, true)
@@ -172,7 +173,7 @@ func (parser *Parser) parseIncrementPrefixExpression(context *Context) Expressio
 
 /** infix expressions **/
 
-func (parser *Parser) parseInfixExpression(context *Context, left Expression) Expression {
+func (parser *Parser) parseInfixExpression(context *types.Context, left Expression) Expression {
 	currentToken := parser.consume()
 	precedence := expressionPrecedences[currentToken.Type]
 
@@ -186,7 +187,7 @@ func (parser *Parser) parseInfixExpression(context *Context, left Expression) Ex
 	}
 }
 
-func (parser *Parser) parseAssignmentExpression(context *Context, left Expression) Expression {
+func (parser *Parser) parseAssignmentExpression(context *types.Context, left Expression) Expression {
 	assignToken := parser.consume()
 	right := parser.parseExpression(context, ExpressionAssignment)
 
@@ -205,7 +206,7 @@ func (parser *Parser) parseAssignmentExpression(context *Context, left Expressio
 	}
 }
 
-func (parser *Parser) parseCallExpression(context *Context, function Expression) Expression {
+func (parser *Parser) parseCallExpression(context *types.Context, function Expression) Expression {
 	currentToken := parser.consume()
 	argumentList := parser.parseArgumentList(context)
 
@@ -226,15 +227,15 @@ func (parser *Parser) parseCallExpression(context *Context, function Expression)
 	}
 }
 
-func (parser *Parser) parseIncrementInfixExpression(_ *Context, identExpression Expression) Expression {
+func (parser *Parser) parseIncrementInfixExpression(_ *types.Context, identExpression Expression) Expression {
 	operatorToken := parser.current()
 	return parser.parseIncrementExpression(operatorToken, identExpression, false)
 }
 
-func (parser *Parser) parseMemberAccessExpression(context *Context, left Expression) Expression {
+func (parser *Parser) parseMemberAccessExpression(context *types.Context, left Expression) Expression {
 	dotToken := parser.consume()
 	leftType := parser.getExpressionType(left, context)
-	right := parser.parseExpression(NewSubContext(context, leftType), ExpressionPostfix)
+	right := parser.parseExpression(types.GetMemberTypeContext(context, leftType), ExpressionPostfix)
 
 	ident, isIdent := right.(*Identifier)
 	if !isIdent {
@@ -243,11 +244,19 @@ func (parser *Parser) parseMemberAccessExpression(context *Context, left Express
 		return &InvalidExpression{InvalidToken: dotToken}
 	}
 
+	memberType, resolvedParentType, ok := context.GetTypeMemberType(ident.Value, leftType)
+	if !ok {
+		parser.error(dotToken, "Member '%s' does not exist on '%s'",
+			ident.Value, leftType.ToString())
+		return &InvalidExpression{InvalidToken: dotToken}
+	}
+
 	return &MemberAccessExpression{
 		DotToken:   dotToken,
 		Expression: left,
 		Member:     ident,
-		ParentType: leftType,
+		ParentType: resolvedParentType,
+		MemberType: memberType,
 	}
 }
 
@@ -270,7 +279,7 @@ func (parser *Parser) parseIncrementExpression(operatorToken *token.Token, ident
 	}
 }
 
-func (parser *Parser) parseArgumentList(context *Context) []Expression {
+func (parser *Parser) parseArgumentList(context *types.Context) []Expression {
 
 	arguments := make([]Expression, 0)
 

@@ -2,21 +2,20 @@ package builtins
 
 import (
 	"bananascript/src/evaluator"
-	"bananascript/src/parser"
 	"bananascript/src/types"
 	"fmt"
 	"strconv"
 	"strings"
 )
 
-type Builtin struct {
-	Type   types.Type
-	Object evaluator.Object
+type BuiltinFunction struct {
+	Executor     func(evaluator.Object, []evaluator.Object) evaluator.Object
+	This         evaluator.Object
+	FunctionType types.Type
 }
 
-type BuiltinFunction struct {
-	Executor func(evaluator.Object, []evaluator.Object) evaluator.Object
-	This     evaluator.Object
+func (builtinFunction *BuiltinFunction) Type() types.Type {
+	return builtinFunction.FunctionType
 }
 
 func (builtinFunction *BuiltinFunction) Execute(arguments []evaluator.Object) evaluator.Object {
@@ -33,180 +32,166 @@ func (builtinFunction *BuiltinFunction) ToString() string {
 	return "[Function]"
 }
 
-var toStringBuiltin = &Builtin{
-	Type: &types.FunctionType{
-		ParameterTypes: []types.Type{},
-		ReturnType:     &types.StringType{},
-	},
-	Object: &BuiltinFunction{
-		Executor: func(this evaluator.Object, _ []evaluator.Object) evaluator.Object {
-			return &evaluator.StringObject{Value: this.ToString()}
-		},
-	},
+var anyBuiltin = &types.Iface{
+	Members: make(map[string]types.Type),
 }
 
-var builtinTypeMembers = map[types.Type]map[string]*Builtin{
+var builtinTypes = map[string]types.Type{
+	"any": anyBuiltin,
+}
+
+var builtinObjects = map[types.Type]map[string]evaluator.Object{
 	nil: {
-		"println": {
-			Type: &types.FunctionType{
-				ParameterTypes: []types.Type{&types.StringType{}},
-				ReturnType:     &types.VoidType{},
+		"println": &BuiltinFunction{
+			FunctionType: &types.Function{
+				ParameterTypes: []types.Type{anyBuiltin},
+				ReturnType:     &types.Void{},
 			},
-			Object: &BuiltinFunction{
-				Executor: func(_ evaluator.Object, arguments []evaluator.Object) evaluator.Object {
-					fmt.Println(arguments[0].ToString())
-					return nil
-				},
+			Executor: func(_ evaluator.Object, arguments []evaluator.Object) evaluator.Object {
+				fmt.Println(arguments[0].ToString())
+				return nil
 			},
 		},
-		"print": {
-			Type: &types.FunctionType{
-				ParameterTypes: []types.Type{&types.StringType{}},
-				ReturnType:     &types.VoidType{},
+		"print": &BuiltinFunction{
+			FunctionType: &types.Function{
+				ParameterTypes: []types.Type{anyBuiltin},
+				ReturnType:     &types.Void{},
 			},
-			Object: &BuiltinFunction{
-				Executor: func(_ evaluator.Object, arguments []evaluator.Object) evaluator.Object {
-					fmt.Print(arguments[0].ToString())
-					return nil
-				},
+			Executor: func(_ evaluator.Object, arguments []evaluator.Object) evaluator.Object {
+				fmt.Print(arguments[0].ToString())
+				return nil
 			},
 		},
-		"prompt": {
-			Type: &types.FunctionType{
-				ParameterTypes: []types.Type{&types.StringType{}},
-				ReturnType:     &types.StringType{},
+		"prompt": &BuiltinFunction{
+			FunctionType: &types.Function{
+				ParameterTypes: []types.Type{anyBuiltin},
+				ReturnType:     &types.String{},
 			},
-			Object: &BuiltinFunction{
-				Executor: func(_ evaluator.Object, arguments []evaluator.Object) evaluator.Object {
-					fmt.Print(arguments[0].ToString())
-					var input string
-					_, err := fmt.Scanln(&input)
-					if err != nil {
-						panic(err)
-					}
-					return &evaluator.StringObject{Value: input}
-				},
+			Executor: func(_ evaluator.Object, arguments []evaluator.Object) evaluator.Object {
+				fmt.Print(arguments[0].ToString())
+				var input string
+				_, err := fmt.Scanln(&input)
+				if err != nil {
+					panic(err)
+				}
+				return &evaluator.StringObject{Value: input}
 			},
 		},
-		"min": {
-			Type: &types.FunctionType{
-				ParameterTypes: []types.Type{&types.IntType{}, &types.IntType{}},
-				ReturnType:     &types.IntType{},
+		"min": &BuiltinFunction{
+			FunctionType: &types.Function{
+				ParameterTypes: []types.Type{&types.Int{}, &types.Int{}},
+				ReturnType:     &types.Int{},
 			},
-			Object: &BuiltinFunction{
-				Executor: func(_ evaluator.Object, arguments []evaluator.Object) evaluator.Object {
-					a := arguments[0].(*evaluator.IntegerObject).Value
-					b := arguments[1].(*evaluator.IntegerObject).Value
-					min := a
-					if b < a {
-						min = b
-					}
-					return &evaluator.IntegerObject{Value: min}
-				},
+			Executor: func(_ evaluator.Object, arguments []evaluator.Object) evaluator.Object {
+				a := arguments[0].(*evaluator.IntegerObject).Value
+				b := arguments[1].(*evaluator.IntegerObject).Value
+				min := a
+				if b < a {
+					min = b
+				}
+				return &evaluator.IntegerObject{Value: min}
 			},
 		},
-		"max": {
-			Type: &types.FunctionType{
-				ParameterTypes: []types.Type{&types.IntType{}, &types.IntType{}},
-				ReturnType:     &types.IntType{},
+		"max": &BuiltinFunction{
+			FunctionType: &types.Function{
+				ParameterTypes: []types.Type{&types.Int{}, &types.Int{}},
+				ReturnType:     &types.Int{},
 			},
-			Object: &BuiltinFunction{
-				Executor: func(_ evaluator.Object, arguments []evaluator.Object) evaluator.Object {
-					a := arguments[0].(*evaluator.IntegerObject).Value
-					b := arguments[1].(*evaluator.IntegerObject).Value
-					max := a
-					if a < b {
-						max = b
-					}
-					return &evaluator.IntegerObject{Value: max}
-				},
+			Executor: func(_ evaluator.Object, arguments []evaluator.Object) evaluator.Object {
+				a := arguments[0].(*evaluator.IntegerObject).Value
+				b := arguments[1].(*evaluator.IntegerObject).Value
+				max := a
+				if a < b {
+					max = b
+				}
+				return &evaluator.IntegerObject{Value: max}
 			},
 		},
 	},
-	&types.IntType{}: {
-		"toString": toStringBuiltin,
-		"abs": {
-			Type: &types.FunctionType{
+	anyBuiltin: {
+		"toString": &BuiltinFunction{
+			FunctionType: &types.Function{
 				ParameterTypes: []types.Type{},
-				ReturnType:     &types.IntType{},
+				ReturnType:     &types.String{},
 			},
-			Object: &BuiltinFunction{
-				Executor: func(this evaluator.Object, _ []evaluator.Object) evaluator.Object {
-					value := this.(*evaluator.IntegerObject).Value
-					if value < 0 {
-						value *= -1
-					}
-					return &evaluator.IntegerObject{Value: value}
-				},
+			Executor: func(this evaluator.Object, _ []evaluator.Object) evaluator.Object {
+				return &evaluator.StringObject{Value: this.ToString()}
 			},
 		},
 	},
-	&types.BoolType{}: {
-		"toString": toStringBuiltin,
+	&types.Int{}: {
+		"abs": &BuiltinFunction{
+			FunctionType: &types.Function{
+				ParameterTypes: []types.Type{},
+				ReturnType:     &types.Int{},
+			},
+			Executor: func(this evaluator.Object, _ []evaluator.Object) evaluator.Object {
+				value := this.(*evaluator.IntegerObject).Value
+				if value < 0 {
+					value *= -1
+				}
+				return &evaluator.IntegerObject{Value: value}
+			},
+		},
 	},
-	&types.StringType{}: {
-		"toString": toStringBuiltin,
-		"length": {
-			Type: &types.FunctionType{
+	&types.String{}: {
+		"length": &BuiltinFunction{
+			FunctionType: &types.Function{
 				ParameterTypes: []types.Type{},
-				ReturnType:     &types.IntType{},
+				ReturnType:     &types.Int{},
 			},
-			Object: &BuiltinFunction{
-				Executor: func(this evaluator.Object, _ []evaluator.Object) evaluator.Object {
-					return &evaluator.IntegerObject{Value: int64(len([]rune(this.ToString())))}
-				},
+			Executor: func(this evaluator.Object, _ []evaluator.Object) evaluator.Object {
+				return &evaluator.IntegerObject{Value: int64(len([]rune(this.ToString())))}
 			},
 		},
-		"uppercase": {
-			Type: &types.FunctionType{
+		"uppercase": &BuiltinFunction{
+			FunctionType: &types.Function{
 				ParameterTypes: []types.Type{},
-				ReturnType:     &types.StringType{},
+				ReturnType:     &types.String{},
 			},
-			Object: &BuiltinFunction{
-				Executor: func(this evaluator.Object, _ []evaluator.Object) evaluator.Object {
-					return &evaluator.StringObject{Value: strings.ToUpper(this.ToString())}
-				},
+			Executor: func(this evaluator.Object, _ []evaluator.Object) evaluator.Object {
+				return &evaluator.StringObject{Value: strings.ToUpper(this.ToString())}
 			},
 		},
-		"lowercase": {
-			Type: &types.FunctionType{
+		"lowercase": &BuiltinFunction{
+			FunctionType: &types.Function{
 				ParameterTypes: []types.Type{},
-				ReturnType:     &types.StringType{},
+				ReturnType:     &types.String{},
 			},
-			Object: &BuiltinFunction{
-				Executor: func(this evaluator.Object, _ []evaluator.Object) evaluator.Object {
-					return &evaluator.StringObject{Value: strings.ToLower(this.ToString())}
-				},
+			Executor: func(this evaluator.Object, _ []evaluator.Object) evaluator.Object {
+				return &evaluator.StringObject{Value: strings.ToLower(this.ToString())}
 			},
 		},
-		"parseInt": {
-			Type: &types.FunctionType{
+		"parseInt": &BuiltinFunction{
+			FunctionType: &types.Function{
 				ParameterTypes: []types.Type{},
-				ReturnType:     &types.IntType{},
+				ReturnType:     &types.Int{},
 			},
-			Object: &BuiltinFunction{
-				Executor: func(this evaluator.Object, _ []evaluator.Object) evaluator.Object {
-					// TODO throw error if invalid
-					value, _ := strconv.ParseInt(this.ToString(), 10, 64)
-					return &evaluator.IntegerObject{Value: value}
-				},
+			Executor: func(this evaluator.Object, _ []evaluator.Object) evaluator.Object {
+				// TODO throw error if invalid
+				value, _ := strconv.ParseInt(this.ToString(), 10, 64)
+				return &evaluator.IntegerObject{Value: value}
 			},
 		},
 	},
 }
 
-func NewContextAndEnvironment() (*parser.Context, *evaluator.Environment) {
-	context := parser.NewContext()
-	environment := evaluator.NewEnvironment()
-	for parentType, builtins := range builtinTypeMembers {
+func NewContextAndEnvironment() (*types.Context, *evaluator.Environment) {
+	context := types.NewContext()
+	environment := evaluator.NewEnvironment(context)
+	for parentType, builtins := range builtinObjects {
 		for name, builtin := range builtins {
-			context.Define(name, builtin.Type, parentType)
 			if parentType == nil {
-				environment.Define(name, builtin.Object)
+				context.DefineMemberType(name, builtin.Type())
+				environment.DefineObject(name, builtin)
 			} else {
-				environment.DefineTypeMember(parentType, name, builtin.Object)
+				context.DefineTypeMemberType(name, builtin.Type(), parentType)
+				environment.DefineTypeMember(parentType, name, builtin)
 			}
 		}
 	}
-	return parser.ExtendContext(context), evaluator.ExtendEnvironment(environment)
+	for builtinTypeName, builtinType := range builtinTypes {
+		context.DefineType(builtinTypeName, builtinType)
+	}
+	return context, environment
 }

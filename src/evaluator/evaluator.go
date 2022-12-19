@@ -56,9 +56,10 @@ func Eval(node parser.Node, environment *Environment) Object {
 }
 
 func evalProgram(program *parser.Program, environment *Environment) Object {
+	newEnvironment := ExtendEnvironment(environment, program.Context)
 	var result Object
 	for _, statement := range program.Statements {
-		result = Eval(statement, environment)
+		result = Eval(statement, newEnvironment)
 		switch result := result.(type) {
 		case *ErrorObject:
 			return result
@@ -179,7 +180,7 @@ func evalAssignmentExpression(assignmentExpression *parser.AssignmentExpression,
 	}
 
 	name := assignmentExpression.Name.Value
-	if object, ok := environment.Assign(name, object); ok {
+	if object, ok := environment.AssignObject(name, object); ok {
 		return object
 	} else {
 		return NewError("Cannot resolve variable")
@@ -209,7 +210,7 @@ func evalCallExpression(callExpression *parser.CallExpression, environment *Envi
 }
 
 func evalIdentifierExpression(identifier *parser.Identifier, environment *Environment) Object {
-	if object, exists := environment.Get(identifier.Value); exists {
+	if object, exists := environment.GetObject(identifier.Value); exists {
 		return object
 	} else {
 		return NewError("Cannot resolve identifier")
@@ -224,7 +225,7 @@ func evalLetStatement(letStatement *parser.LetStatement, environment *Environmen
 	}
 
 	name := letStatement.Name.Value
-	environment.Define(name, object)
+	environment.DefineObject(name, object)
 	return nil
 }
 
@@ -238,15 +239,17 @@ func evalFunctionDefinitionStatement(funcStatement *parser.FunctionDefinitionSta
 	}
 
 	object := &FunctionObject{
-		Parameters:  identifiers,
-		Body:        funcStatement.Body,
-		Environment: environment,
+		Parameters:   identifiers,
+		Body:         funcStatement.Body,
+		Environment:  environment,
+		Context:      funcStatement.FunctionContext,
+		FunctionType: funcStatement.FunctionType,
 	}
 
 	if funcStatement.ThisType != nil {
 		environment.DefineTypeMember(funcStatement.ThisType, name, object)
 	} else {
-		environment.Define(name, object)
+		environment.DefineObject(name, object)
 	}
 	return nil
 }
@@ -260,7 +263,7 @@ func evalReturnStatement(returnStatement *parser.ReturnStatement, environment *E
 }
 
 func evalBlockStatement(blockStatement *parser.BlockStatement, environment *Environment) Object {
-	newEnvironment := ExtendEnvironment(environment)
+	newEnvironment := ExtendEnvironment(environment, blockStatement.Context)
 
 	for _, statement := range blockStatement.Statements {
 		object := Eval(statement, newEnvironment)
@@ -282,12 +285,18 @@ func evalIfStatement(ifStatement *parser.IfStatement, environment *Environment) 
 	if isError(condition) {
 		return condition
 	}
+	var object Object
 	if implicitBoolConversion(condition) {
-		Eval(ifStatement.Statement, ExtendEnvironment(environment))
+		object = Eval(ifStatement.Statement, ExtendEnvironment(environment, ifStatement.StatementContext))
 	} else if ifStatement.Alternative != nil {
-		Eval(ifStatement.Alternative, ExtendEnvironment(environment))
+		object = Eval(ifStatement.Alternative, ExtendEnvironment(environment, ifStatement.AlternativeContext))
 	}
-	return nil
+	switch object.(type) {
+	case *ErrorObject, *ReturnObject:
+		return object
+	default:
+		return nil
+	}
 }
 
 func evalWhileStatement(whileStatement *parser.WhileStatement, environment *Environment) Object {
@@ -299,7 +308,7 @@ func evalWhileStatement(whileStatement *parser.WhileStatement, environment *Envi
 		if !implicitBoolConversion(condition) {
 			return nil
 		}
-		object := Eval(whileStatement.Statement, ExtendEnvironment(environment))
+		object := Eval(whileStatement.Statement, ExtendEnvironment(environment, whileStatement.StatementContext))
 		switch object := object.(type) {
 		case *ErrorObject, *ReturnObject:
 			return object
@@ -311,7 +320,7 @@ func evalWhileStatement(whileStatement *parser.WhileStatement, environment *Envi
 
 func evalIncrementExpression(incrementExpression *parser.IncrementExpression, environment *Environment) Object {
 
-	object, exists := environment.Get(incrementExpression.Name.Value)
+	object, exists := environment.GetObject(incrementExpression.Name.Value)
 	if !exists {
 		return NewError("Cannot resolve identifier")
 	}
@@ -340,7 +349,7 @@ func evalMemberAccessExpression(memberAccessExpression *parser.MemberAccessExpre
 		return object
 	}
 
-	member, ok := environment.GetMember(object, memberAccessExpression.ParentType, memberAccessExpression.Member.Value)
+	member, ok := environment.GetTypeMember(object, object.Type(), memberAccessExpression.Member.Value)
 	if !ok {
 		return NewError("Member %s does not exist", memberAccessExpression.Member.Value)
 	}

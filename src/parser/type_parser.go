@@ -16,8 +16,8 @@ var typePrecedences = map[token.Type]TypePrecedence{
 	token.Qmark: TypeOptional,
 }
 
-var prefixTypeParseFunctions = make(map[token.Type]func(*Context) types.Type)
-var infixTypeParseFunctions = make(map[token.Type]func(*Context, types.Type) types.Type)
+var prefixTypeParseFunctions = make(map[token.Type]func(*types.Context) types.Type)
+var infixTypeParseFunctions = make(map[token.Type]func(*types.Context, types.Type) types.Type)
 
 func getTypePrecedence(token *token.Token) TypePrecedence {
 	if precedence, exists := typePrecedences[token.Type]; exists {
@@ -31,18 +31,19 @@ func (parser *Parser) registerTypeParseFunctions() {
 	prefixTypeParseFunctions[token.Null] = parser.parseTypeLiteral
 	prefixTypeParseFunctions[token.Void] = parser.parseTypeLiteral
 	prefixTypeParseFunctions[token.Func] = parser.parseFunctionTypeLiteral
+	prefixTypeParseFunctions[token.Iface] = parser.parseIfaceTypeLiteral
 
 	infixTypeParseFunctions[token.Qmark] = parser.parseOptionalTypeLiteral
 }
 
-func (parser *Parser) parseType(context *Context, precedence TypePrecedence) types.Type {
+func (parser *Parser) parseType(context *types.Context, precedence TypePrecedence) types.Type {
 	currentToken := parser.current()
 	prefixFunction := prefixTypeParseFunctions[currentToken.Type]
 	if prefixFunction == nil {
 		if currentToken.Type != token.Illegal {
 			parser.error(currentToken, "Unexpected %s", currentToken.ToString())
 		}
-		return &types.NeverType{}
+		return &types.Never{}
 	}
 
 	theType := prefixFunction(context)
@@ -62,7 +63,7 @@ func (parser *Parser) parseType(context *Context, precedence TypePrecedence) typ
 
 /** prefix types **/
 
-func (parser *Parser) parseTypeLiteral(context *Context) types.Type {
+func (parser *Parser) parseTypeLiteral(context *types.Context) types.Type {
 	currentToken := parser.current()
 
 	switch currentToken.Type {
@@ -70,30 +71,30 @@ func (parser *Parser) parseTypeLiteral(context *Context) types.Type {
 		typeName := parser.current().Literal
 		switch typeName {
 		case types.TypeString:
-			return &types.StringType{}
+			return &types.String{}
 		case types.TypeBool:
-			return &types.BoolType{}
+			return &types.Bool{}
 		case types.TypeInt:
-			return &types.IntType{}
+			return &types.Int{}
 		default:
 			theType, ok := context.GetType(typeName)
 			if !ok {
 				parser.error(currentToken, "Unknown type '%s'", typeName)
-				return &types.NeverType{}
+				return &types.Never{}
 			}
 			return theType
 		}
 	case token.Null:
-		return &types.NullType{}
+		return &types.Null{}
 	case token.Void:
-		return &types.VoidType{}
+		return &types.Void{}
 	}
-	return &types.NeverType{}
+	return &types.Never{}
 }
 
-func (parser *Parser) parseFunctionTypeLiteral(context *Context) types.Type {
+func (parser *Parser) parseFunctionTypeLiteral(context *types.Context) types.Type {
 	if !parser.assertNext(token.LParen) {
-		return &types.NeverType{}
+		return &types.Never{}
 	}
 	parameterTypes := make([]types.Type, 0)
 	if parser.peek().Type != token.RParen {
@@ -109,21 +110,43 @@ func (parser *Parser) parseFunctionTypeLiteral(context *Context) types.Type {
 		}
 	}
 	if !parser.assertNext(token.RParen) {
-		return &types.NeverType{}
+		return &types.Never{}
 	}
 	parser.consume()
 	returnType := parser.parseType(context, TypeLowest)
-	return &types.FunctionType{
+	return &types.Function{
 		ParameterTypes: parameterTypes,
 		ReturnType:     returnType,
 	}
 }
 
+func (parser *Parser) parseIfaceTypeLiteral(context *types.Context) types.Type {
+
+	if !parser.assertNext(token.LBrace) {
+		return &types.Never{}
+	}
+
+	iface := &types.Iface{Members: make(map[string]types.Type)}
+	for parser.peek().Type == token.Ident {
+		parser.consume()
+		name := parser.current().Literal
+		parser.assertNext(token.Colon)
+		parser.consume()
+		memberType := parser.parseType(context, TypeLowest)
+		iface.Members[name] = memberType
+		parser.assertNext(token.Semi)
+	}
+
+	parser.assertNext(token.RBrace)
+
+	return iface
+}
+
 /** infix types **/
 
-func (parser *Parser) parseOptionalTypeLiteral(_ *Context, left types.Type) types.Type {
+func (parser *Parser) parseOptionalTypeLiteral(_ *types.Context, left types.Type) types.Type {
 	switch left.(type) {
-	case *types.NeverType, *types.NullType, *types.VoidType, *types.Optional:
+	case *types.Never, *types.Null, *types.Void, *types.Optional:
 		return left
 	default:
 		return &types.Optional{Base: left}

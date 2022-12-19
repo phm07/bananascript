@@ -5,6 +5,7 @@ import (
 	"bananascript/src/evaluator"
 	"bananascript/src/lexer"
 	"bananascript/src/parser"
+	"bananascript/src/types"
 	"bufio"
 	"fmt"
 	"os"
@@ -28,7 +29,7 @@ func Start() {
 		theLexer := lexer.FromCode(input)
 		theParser := parser.New(theLexer)
 
-		newContext := parser.ExtendContext(context)
+		newContext := types.ExtendContext(context)
 		program, errors := theParser.ParseProgram(newContext)
 
 		if len(errors) > 0 {
@@ -37,7 +38,7 @@ func Start() {
 			}
 		} else {
 			context = newContext
-			environment = evaluator.ExtendEnvironment(environment)
+			environment = evaluator.ExtendEnvironment(environment, types.NewContext())
 			result := evaluator.Eval(program, environment)
 			if result != nil {
 				fmt.Println(result.ToString())

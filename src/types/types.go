@@ -11,81 +11,86 @@ const (
 
 type Type interface {
 	ToString() string
-	IsAssignable(Type) bool
+	IsAssignable(Type, *Context) bool
 }
 
-type NeverType struct {
+type Never struct {
 }
 
-func (neverType *NeverType) ToString() string {
+func (neverType *Never) ToString() string {
 	return TypeNever
 }
 
-func (neverType *NeverType) IsAssignable(Type) bool {
+func (neverType *Never) IsAssignable(Type, *Context) bool {
 	return false
 }
 
-type NullType struct {
+type Null struct {
 }
 
-func (nullType *NullType) ToString() string {
+func (nullType *Null) ToString() string {
 	return TypeNull
 }
 
-func (nullType *NullType) IsAssignable(other Type) bool {
-	return other.ToString() == TypeNull
+func (nullType *Null) IsAssignable(other Type, _ *Context) bool {
+	_, isNull := other.(*Null)
+	return isNull
 }
 
-type VoidType struct {
+type Void struct {
 }
 
-func (voidType *VoidType) ToString() string {
+func (voidType *Void) ToString() string {
 	return TypeVoid
 }
 
-func (voidType *VoidType) IsAssignable(other Type) bool {
-	return other.ToString() == TypeVoid
+func (voidType *Void) IsAssignable(other Type, _ *Context) bool {
+	_, isVoid := other.(*Void)
+	return isVoid
 }
 
-type IntType struct {
+type Int struct {
 }
 
-func (integerType *IntType) ToString() string {
+func (integerType *Int) ToString() string {
 	return TypeInt
 }
 
-func (integerType *IntType) IsAssignable(other Type) bool {
-	return other.ToString() == TypeInt
+func (integerType *Int) IsAssignable(other Type, _ *Context) bool {
+	_, isInt := other.(*Int)
+	return isInt
 }
 
-type BoolType struct {
+type Bool struct {
 }
 
-func (boolType *BoolType) ToString() string {
+func (boolType *Bool) ToString() string {
 	return TypeBool
 }
 
-func (boolType *BoolType) IsAssignable(other Type) bool {
-	return other.ToString() == TypeBool
+func (boolType *Bool) IsAssignable(other Type, _ *Context) bool {
+	_, isBool := other.(*Bool)
+	return isBool
 }
 
-type StringType struct {
+type String struct {
 }
 
-func (stringType *StringType) ToString() string {
+func (stringType *String) ToString() string {
 	return TypeString
 }
 
-func (stringType *StringType) IsAssignable(other Type) bool {
-	return other.ToString() == TypeString
+func (stringType *String) IsAssignable(other Type, _ *Context) bool {
+	_, isString := other.(*String)
+	return isString
 }
 
-type FunctionType struct {
+type Function struct {
 	ParameterTypes []Type
 	ReturnType     Type
 }
 
-func (functionType *FunctionType) ToString() string {
+func (functionType *Function) ToString() string {
 	result := "fn("
 	for i, parameter := range functionType.ParameterTypes {
 		if i > 0 {
@@ -96,11 +101,11 @@ func (functionType *FunctionType) ToString() string {
 	return result + ") " + functionType.ReturnType.ToString()
 }
 
-func (functionType *FunctionType) IsAssignable(other Type) bool {
-	if other, isFunction := other.(*FunctionType); isFunction {
+func (functionType *Function) IsAssignable(other Type, context *Context) bool {
+	if other, isFunction := other.(*Function); isFunction {
 		if len(functionType.ParameterTypes) == len(other.ParameterTypes) {
 			for i := range functionType.ParameterTypes {
-				if !functionType.ParameterTypes[i].IsAssignable(other.ParameterTypes[i]) {
+				if !functionType.ParameterTypes[i].IsAssignable(other.ParameterTypes[i], context) {
 					return false
 				}
 			}
@@ -118,22 +123,33 @@ func (optional *Optional) ToString() string {
 	return optional.Base.ToString() + "?"
 }
 
-func (optional *Optional) IsAssignable(other Type) bool {
-	switch other.ToString() {
-	case optional.Base.ToString(), optional.Base.ToString() + "?", TypeNull:
+func (optional *Optional) IsAssignable(other Type, context *Context) bool {
+	switch other := other.(type) {
+	case *Null:
 		return true
+	case *Optional:
+		return optional.Base.IsAssignable(other.Base, context)
 	default:
-		return false
+		return optional.Base.IsAssignable(other, context)
 	}
 }
 
-func IsAssignable(theType Type, parentType Type) bool {
-	if theType == nil {
-		if parentType != nil {
-			return false
-		}
-	} else {
-		if parentType == nil || !theType.IsAssignable(parentType) {
+type Iface struct {
+	Members map[string]Type
+}
+
+func (iface *Iface) ToString() string {
+	result := "iface { "
+	for name, memberType := range iface.Members {
+		result += name + ": " + memberType.ToString() + "; "
+	}
+	return result + "}"
+}
+
+func (iface *Iface) IsAssignable(other Type, context *Context) bool {
+	for name, memberType := range iface.Members {
+		actualType, _, ok := context.GetTypeMemberType(name, other)
+		if !ok || !memberType.IsAssignable(actualType, context) {
 			return false
 		}
 	}

@@ -6,7 +6,7 @@ import (
 	"reflect"
 )
 
-func (parser *Parser) parseStatement(context *Context) Statement {
+func (parser *Parser) parseStatement(context *types.Context) Statement {
 	switch parser.current().Type {
 	case token.Let:
 		return parser.parseLetStatement(context)
@@ -27,7 +27,7 @@ func (parser *Parser) parseStatement(context *Context) Statement {
 	}
 }
 
-func (parser *Parser) parseExpressionStatement(context *Context) *ExpressionStatement {
+func (parser *Parser) parseExpressionStatement(context *types.Context) *ExpressionStatement {
 	statement := &ExpressionStatement{}
 	statement.Expression = parser.parseExpression(context, ExpressionLowest)
 	parser.getExpressionType(statement.Expression, context) // check for errors
@@ -39,7 +39,7 @@ func (parser *Parser) parseExpressionStatement(context *Context) *ExpressionStat
 	return statement
 }
 
-func (parser *Parser) parseReturnStatement(context *Context) *ReturnStatement {
+func (parser *Parser) parseReturnStatement(context *types.Context) *ReturnStatement {
 	statement := &ReturnStatement{ReturnToken: parser.consume()}
 
 	if parser.current().Type == token.Semi {
@@ -52,8 +52,9 @@ func (parser *Parser) parseReturnStatement(context *Context) *ReturnStatement {
 	return statement
 }
 
-func (parser *Parser) parseBlockStatement(context *Context) *BlockStatement {
+func (parser *Parser) parseBlockStatement(context *types.Context) *BlockStatement {
 
+	newContext := types.ExtendContext(context)
 	openingBrace := parser.consume()
 	statements := make([]Statement, 0)
 
@@ -63,7 +64,7 @@ func (parser *Parser) parseBlockStatement(context *Context) *BlockStatement {
 			continue
 		}
 
-		statement := parser.parseStatement(context)
+		statement := parser.parseStatement(newContext)
 		if statement != nil && !reflect.ValueOf(statement).IsNil() {
 			statements = append(statements, statement)
 		}
@@ -76,10 +77,10 @@ func (parser *Parser) parseBlockStatement(context *Context) *BlockStatement {
 		rBraceToken = nil
 	}
 
-	return &BlockStatement{Statements: statements, LBraceToken: openingBrace, RBraceToken: rBraceToken}
+	return &BlockStatement{Statements: statements, LBraceToken: openingBrace, RBraceToken: rBraceToken, Context: newContext}
 }
 
-func (parser *Parser) parseLetStatement(context *Context) *LetStatement {
+func (parser *Parser) parseLetStatement(context *types.Context) *LetStatement {
 	statement := &LetStatement{LetToken: parser.current()}
 	if !parser.assertNext(token.Ident) {
 		return nil
@@ -112,7 +113,7 @@ func (parser *Parser) parseLetStatement(context *Context) *LetStatement {
 	inferredType := parser.getExpressionType(statement.Value, context)
 	if statement.Type == nil {
 		statement.Type = inferredType
-	} else if !statement.Type.IsAssignable(inferredType) {
+	} else if !statement.Type.IsAssignable(inferredType, context) {
 		erroneousToken := statement.Value.Token()
 		if erroneousToken == nil {
 			erroneousToken = parser.current()
@@ -123,19 +124,20 @@ func (parser *Parser) parseLetStatement(context *Context) *LetStatement {
 		}
 	}
 
-	_, ok := context.Define(name, statement.Type, nil)
+	_, ok := context.DefineMemberType(name, statement.Type)
 	if !ok {
 		parser.error(identToken, "Cannot redefine '%s'", name)
 	}
 	return statement
 }
 
-func (parser *Parser) parseFunctionDefinitionStatement(context *Context) *FunctionDefinitionStatement {
+func (parser *Parser) parseFunctionDefinitionStatement(context *types.Context) *FunctionDefinitionStatement {
 
 	statement := &FunctionDefinitionStatement{FuncToken: parser.current()}
 
 	if parser.peek().Type == token.LParen {
-		parser.consume()
+		parser.consume() // fn
+		parser.consume() // (
 		statement.ThisType = parser.parseType(context, TypeLowest)
 		if !parser.assertNext(token.RParen) || !parser.assertNext(token.DoubleColon) {
 			return nil
@@ -160,7 +162,7 @@ func (parser *Parser) parseFunctionDefinitionStatement(context *Context) *Functi
 	parser.consume()
 
 	if parser.current().Type == token.LBrace {
-		statement.ReturnType = &types.VoidType{}
+		statement.ReturnType = &types.Void{}
 	} else {
 		statement.ReturnType = parser.parseType(context, TypeLowest)
 		if !parser.assertNext(token.LBrace) {
@@ -169,35 +171,43 @@ func (parser *Parser) parseFunctionDefinitionStatement(context *Context) *Functi
 	}
 
 	parameterTypes := make([]types.Type, 0)
-	functionContext := ExtendContext(context)
-	functionContext.returnType = statement.ReturnType
+	functionContext := types.ExtendContext(context)
+	functionContext.ReturnType = statement.ReturnType
 	if statement.ThisType != nil {
-		functionContext.Define("this", statement.ThisType, nil)
+		functionContext.DefineMemberType("this", statement.ThisType)
 	}
 	for _, parameter := range statement.Parameters {
 		parameterTypes = append(parameterTypes, parameter.Type)
-		_, ok := functionContext.Define(parameter.Name.Value, parameter.Type, nil)
+		_, ok := functionContext.DefineMemberType(parameter.Name.Value, parameter.Type)
 		if !ok {
 			parser.error(parameter.Token, "Cannot redefine '%s'", parameter.Name.Value)
 		}
 	}
 
-	_, ok := context.Define(name, &types.FunctionType{
+	statement.FunctionType = &types.Function{
 		ParameterTypes: parameterTypes,
 		ReturnType:     statement.ReturnType,
-	}, statement.ThisType)
+	}
+
+	var ok bool
+	if statement.ThisType != nil {
+		_, ok = context.DefineTypeMemberType(name, statement.FunctionType, statement.ThisType)
+	} else {
+		_, ok = context.DefineMemberType(name, statement.FunctionType)
+	}
 
 	if !ok {
 		parser.error(identToken, "Cannot redefine '%s'", name)
 	}
 
-	statement.Body = parser.parseBlockStatement(CloneContext(functionContext))
+	statement.FunctionContext = types.CloneContext(functionContext)
+	statement.Body = parser.parseBlockStatement(statement.FunctionContext)
 	if statement.Body == nil {
 		return nil
 	}
 
-	if _, isVoid := statement.ReturnType.(*types.VoidType); !isVoid {
-		if returns := parser.doesReturn(CloneContext(functionContext), statement.Body); !returns {
+	if _, isVoid := statement.ReturnType.(*types.Void); !isVoid {
+		if returns := parser.doesReturn(types.CloneContext(functionContext), statement.Body); !returns {
 			erroneousToken := statement.Body.RBraceToken
 			if erroneousToken == nil {
 				erroneousToken = statement.Body.LBraceToken
@@ -209,7 +219,7 @@ func (parser *Parser) parseFunctionDefinitionStatement(context *Context) *Functi
 	return statement
 }
 
-func (parser *Parser) parseIfStatement(context *Context) *IfStatement {
+func (parser *Parser) parseIfStatement(context *types.Context) *IfStatement {
 
 	statement := &IfStatement{IfToken: parser.consume()}
 
@@ -217,18 +227,20 @@ func (parser *Parser) parseIfStatement(context *Context) *IfStatement {
 	parser.getExpressionType(statement.Condition, context) // check type
 	parser.consume()
 
-	statement.Statement = parser.parseStatement(ExtendContext(context))
+	statement.StatementContext = types.ExtendContext(context)
+	statement.Statement = parser.parseStatement(statement.StatementContext)
 
 	if parser.peek().Type == token.Else {
 		parser.consume()
 		parser.consume()
-		statement.Alternative = parser.parseStatement(ExtendContext(context))
+		statement.AlternativeContext = types.ExtendContext(context)
+		statement.Alternative = parser.parseStatement(statement.AlternativeContext)
 	}
 
 	return statement
 }
 
-func (parser *Parser) parseWhileStatement(context *Context) *WhileStatement {
+func (parser *Parser) parseWhileStatement(context *types.Context) *WhileStatement {
 
 	statement := &WhileStatement{WhileToken: parser.consume()}
 
@@ -236,12 +248,13 @@ func (parser *Parser) parseWhileStatement(context *Context) *WhileStatement {
 	parser.getExpressionType(statement.Condition, context) // check type
 	parser.consume()
 
-	statement.Statement = parser.parseStatement(ExtendContext(context))
+	statement.StatementContext = types.ExtendContext(context)
+	statement.Statement = parser.parseStatement(statement.StatementContext)
 
 	return statement
 }
 
-func (parser *Parser) parseTypeDefinitionStatement(context *Context) *TypeDefinitionStatement {
+func (parser *Parser) parseTypeDefinitionStatement(context *types.Context) *TypeDefinitionStatement {
 
 	if !parser.assertNext(token.Ident) {
 		return nil

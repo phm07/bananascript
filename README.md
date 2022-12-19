@@ -58,22 +58,51 @@ fn (int)::fac() int {
 let num := 5.fac(); // 120
 ```
 
-## Builtin functions
+### Type definitions
 ```
-fn println(string) void;  // Print line to console
-fn print(string) void;    // Print to console (no \n)
-fn prompt(string) string; // Input prompt
-fn min(int, int) int;     // Returns smaller int
-fn max(int, int) int;     // Returns bigger int
+type myNewType := int;
 
-fn (string)::toString() string;  // Returns itself
+let a: myNewType = 0;  // good
+let b: myNewType = ""; // bad
+```
+
+### Interfaces
+```
+fn (int)::sayHello() {
+    println("Hi!");
+}
+
+type myInterface := iface {
+    sayHello: fn() void;
+};
+
+fn sayHello(x: myInterface) {
+    x.sayHello();
+}
+
+123.sayHello();   // good
+"123".sayHello(); // bad
+```
+
+## Builtins
+```
+type string := string;
+type int := int;
+type bool := bool;
+type any := iface { };
+
+fn println(any) void;  // Print line to console
+fn print(any) void;    // Print to console (no \n)
+fn prompt(any) string; // Input prompt
+fn min(int, int) int;  // Returns smaller int
+fn max(int, int) int;  // Returns bigger int
+
+fn (any)::toString() string; // Returns object's string representation
+
 fn (string)::uppercase() string; // Transforms string to uppercase
 fn (string)::lowercase() string; // Transform string to lowercase
 fn (string)::length() int;       // Returns string length
 fn (string)::parseInt() int;     // Parses int from string
 
-fn (int)::toString() string; // Returns itself as string
 fn (int)::abs() int;         // Returns absolute value
-
-fn (bool)::toString() string; // Returns itself as string
 ```

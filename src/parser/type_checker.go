@@ -5,7 +5,7 @@ import (
 	"bananascript/src/types"
 )
 
-func (parser *Parser) getExpressionType(expression Expression, context *Context) types.Type {
+func (parser *Parser) getExpressionType(expression Expression, context *types.Context) types.Type {
 	switch expression := expression.(type) {
 	case *Identifier:
 		return parser.getIdentifierType(expression, context)
@@ -22,111 +22,111 @@ func (parser *Parser) getExpressionType(expression Expression, context *Context)
 	case *MemberAccessExpression:
 		return parser.getMemberAccessExpressionType(expression, context)
 	case *StringLiteral:
-		return &types.StringType{}
+		return &types.String{}
 	case *IntegerLiteral:
-		return &types.IntType{}
+		return &types.Int{}
 	case *BooleanLiteral:
-		return &types.BoolType{}
+		return &types.Bool{}
 	case *NullLiteral:
-		return &types.NullType{}
+		return &types.Null{}
 	case *VoidLiteral:
-		return &types.VoidType{}
+		return &types.Void{}
 	case *InvalidExpression:
-		return &types.NeverType{}
+		return &types.Never{}
 	}
 	parser.error(expression.Token(), "Unknown expression: %T", expression)
-	return &types.NeverType{}
+	return &types.Never{}
 }
 
-func (parser *Parser) getIdentifierType(identifier *Identifier, context *Context) types.Type {
-	theType, ok := context.Get(identifier.Value, nil)
+func (parser *Parser) getIdentifierType(identifier *Identifier, context *types.Context) types.Type {
+	theType, ok := context.GetMemberType(identifier.Value)
 	if !ok {
 		parser.error(identifier.IdentToken, "Cannot resolve reference to '%s'", identifier.Value)
-		return &types.NeverType{}
+		return &types.Never{}
 	}
 	return theType
 }
 
-func (parser *Parser) getPrefixExpressionType(prefixExpression *PrefixExpression, context *Context) types.Type {
+func (parser *Parser) getPrefixExpressionType(prefixExpression *PrefixExpression, context *types.Context) types.Type {
 
 	currentType := parser.getExpressionType(prefixExpression.Expression, context)
 	if isNever(currentType) {
-		return &types.NeverType{}
+		return &types.Never{}
 	}
 
 	switch prefixExpression.Operator {
 	case token.Bang:
-		return &types.BoolType{}
+		return &types.Bool{}
 	case token.Minus:
 		switch currentType.(type) {
-		case *types.IntType:
-			return &types.IntType{}
+		case *types.Int:
+			return &types.Int{}
 		}
 	}
 
 	parser.error(prefixExpression.PrefixToken, "Type mismatch: %s%s", prefixExpression.Operator.ToString(),
 		currentType.ToString())
-	return &types.NeverType{}
+	return &types.Never{}
 }
 
-func (parser *Parser) getInfixExpressionType(infixExpression *InfixExpression, context *Context) types.Type {
+func (parser *Parser) getInfixExpressionType(infixExpression *InfixExpression, context *types.Context) types.Type {
 	leftType, rightType := parser.getExpressionType(infixExpression.Left, context), parser.getExpressionType(infixExpression.Right, context)
 	if isNever(leftType) || isNever(rightType) {
-		return &types.NeverType{}
+		return &types.Never{}
 	}
 
 	switch infixExpression.Operator {
 	case token.EQ, token.NEQ, token.LogicalOr, token.LogicalAnd:
-		return &types.BoolType{}
+		return &types.Bool{}
 	case token.LT, token.GT, token.LTE, token.GTE:
 		if leftType.ToString() == types.TypeInt && rightType.ToString() == types.TypeInt {
-			return &types.BoolType{}
+			return &types.Bool{}
 		}
 	case token.Plus:
 		if leftType.ToString() == types.TypeString || rightType.ToString() == types.TypeString {
-			return &types.StringType{}
+			return &types.String{}
 		} else if leftType.ToString() == types.TypeInt && rightType.ToString() == types.TypeInt {
-			return &types.IntType{}
+			return &types.Int{}
 		}
 	case token.Minus, token.Slash, token.Star:
 		if leftType.ToString() == types.TypeInt && rightType.ToString() == types.TypeInt {
-			return &types.IntType{}
+			return &types.Int{}
 		}
 	}
 
 	parser.error(infixExpression.OperatorToken, "Type mismatch: %s %s %s", leftType.ToString(),
 		infixExpression.Operator.ToString(), rightType.ToString())
-	return &types.NeverType{}
+	return &types.Never{}
 }
 
-func (parser *Parser) getAssignmentExpressionType(assignmentExpression *AssignmentExpression, context *Context) types.Type {
+func (parser *Parser) getAssignmentExpressionType(assignmentExpression *AssignmentExpression, context *types.Context) types.Type {
 	leftType, rightType := parser.getExpressionType(assignmentExpression.Name, context), parser.getExpressionType(assignmentExpression.Expression, context)
 	if isNever(leftType) || isNever(rightType) {
-		return &types.NeverType{}
+		return &types.Never{}
 	}
 
-	if !rightType.IsAssignable(leftType) {
+	if !rightType.IsAssignable(leftType, context) {
 		parser.error(assignmentExpression.AssignToken, "Type '%s' is not assignable to '%s'",
 			rightType.ToString(), leftType.ToString())
-		return &types.NeverType{}
+		return &types.Never{}
 	}
 	return rightType
 }
 
-func (parser *Parser) getCallExpressionType(callExpression *CallExpression, context *Context) types.Type {
+func (parser *Parser) getCallExpressionType(callExpression *CallExpression, context *types.Context) types.Type {
 	functionType := parser.getExpressionType(callExpression.Function, context)
 
 	switch functionType := functionType.(type) {
-	case *types.NeverType:
-		return &types.NeverType{}
-	case *types.FunctionType:
+	case *types.Never:
+		return &types.Never{}
+	case *types.Function:
 		if len(functionType.ParameterTypes) == len(callExpression.Arguments) {
 			for i, parameterType := range functionType.ParameterTypes {
 				if isNever(parameterType) {
 					continue
 				}
 				argumentType := parser.getExpressionType(callExpression.Arguments[i], context)
-				if !isNever(argumentType) && !parameterType.IsAssignable(argumentType) {
+				if !isNever(argumentType) && !parameterType.IsAssignable(argumentType, context) {
 					parser.error(callExpression.Arguments[i].Token(), "Type '%s' is not assignable to '%s'",
 						argumentType.ToString(), parameterType.ToString())
 				}
@@ -138,36 +138,30 @@ func (parser *Parser) getCallExpressionType(callExpression *CallExpression, cont
 		return functionType.ReturnType
 	default:
 		parser.error(callExpression.ParenToken, "Cannot call '%s'", functionType.ToString())
-		return &types.NeverType{}
+		return &types.Never{}
 	}
 }
 
-func (parser *Parser) getIncrementExpressionType(incrementExpression *IncrementExpression, context *Context) types.Type {
+func (parser *Parser) getIncrementExpressionType(incrementExpression *IncrementExpression, context *types.Context) types.Type {
 	identType := parser.getExpressionType(incrementExpression.Name, context)
 	switch identType.(type) {
-	case *types.NeverType, *types.IntType:
+	case *types.Never, *types.Int:
 		return identType
 	default:
 		parser.error(incrementExpression.OperatorToken, "Unknown operator: %s%s",
 			incrementExpression.Operator.ToString(), identType.ToString())
-		return &types.NeverType{}
+		return &types.Never{}
 	}
 }
 
-func (parser *Parser) getMemberAccessExpressionType(memberAccessExpression *MemberAccessExpression, context *Context) types.Type {
+func (parser *Parser) getMemberAccessExpressionType(memberAccessExpression *MemberAccessExpression, _ *types.Context) types.Type {
 	if isNever(memberAccessExpression.ParentType) {
 		return memberAccessExpression.ParentType
 	}
-	if memberType, ok := context.Get(memberAccessExpression.Member.Value, memberAccessExpression.ParentType); ok {
-		return memberType
-	} else {
-		parser.error(memberAccessExpression.DotToken, "Member '%s' does not exist on '%s'",
-			memberAccessExpression.Member.Value, memberAccessExpression.ParentType.ToString())
-		return &types.NeverType{}
-	}
+	return memberAccessExpression.MemberType
 }
 
 func isNever(theType types.Type) bool {
-	_, isNever := theType.(*types.NeverType)
+	_, isNever := theType.(*types.Never)
 	return isNever
 }

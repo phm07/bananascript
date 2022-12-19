@@ -1,4 +1,4 @@
-fn fac(x: number) number {
+fn fac(x: int) int {
     if x <= 1 {
         return 1;
     } else {
@@ -6,9 +6,9 @@ fn fac(x: number) number {
     }
 }
 
-println(fac(1).toString());
-println(fac(2).toString());
-println(fac(3).toString());
-println(fac(4).toString());
-println(fac(5).toString());
-println(fac(6).toString());
+println(fac(1));
+println(fac(2));
+println(fac(3));
+println(fac(4));
+println(fac(5));
+println(fac(6));
