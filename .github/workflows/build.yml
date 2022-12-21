@@ -1,4 +1,4 @@
-name: Go
+name: Build
 
 on:
   push:
@@ -36,3 +36,6 @@ jobs:
           echo "Building $line..."
           GOOS="$os" GOARCH="$arch" go build -o $outfile src/main.go || true
         done
+
+    - name: Build Docker Image
+      run: "docker build -t bananascript . || true"
