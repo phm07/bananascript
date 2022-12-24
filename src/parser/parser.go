@@ -112,7 +112,7 @@ func (parser *Parser) doesReturn(context *types.Context, statement Statement) bo
 			parser.error(statement.ReturnToken, "Illegal return statement")
 		}
 	case *BlockStatement:
-		newContext := types.ExtendContext(context)
+		newContext := statement.Context
 		returned := false
 		for _, statement := range statement.Statements {
 			if returned {
@@ -123,8 +123,8 @@ func (parser *Parser) doesReturn(context *types.Context, statement Statement) bo
 		}
 		return returned
 	case *IfStatement:
-		return parser.doesReturn(types.ExtendContext(context), statement.Statement) &&
-			parser.doesReturn(types.ExtendContext(context), statement.Alternative)
+		return parser.doesReturn(statement.StatementContext, statement.Statement) &&
+			parser.doesReturn(statement.AlternativeContext, statement.Alternative)
 	}
 	return false
 }
