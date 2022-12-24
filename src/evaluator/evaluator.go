@@ -57,15 +57,14 @@ func Eval(node parser.Node, environment *Environment) Object {
 
 func evalProgram(program *parser.Program, environment *Environment) Object {
 	newEnvironment := ExtendEnvironment(environment, program.Context)
-	var result Object
 	for _, statement := range program.Statements {
-		result = Eval(statement, newEnvironment)
+		result := Eval(statement, newEnvironment)
 		switch result := result.(type) {
 		case *ErrorObject:
 			return result
 		}
 	}
-	return result
+	return nil
 }
 
 func evalPrefixExpression(prefixExpression *parser.PrefixExpression, environment *Environment) Object {
