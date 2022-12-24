@@ -6,14 +6,28 @@ import (
 	"bananascript/src/lexer"
 	"bananascript/src/parser"
 	"bananascript/src/repl"
+	"flag"
 	"fmt"
 	"github.com/gookit/color"
 	"os"
 )
 
 func main() {
-	if len(os.Args) > 1 {
-		runFile(os.Args[1])
+	help := flag.Bool("help", false, "show help")
+	forceColor := flag.Bool("forceColor", false, "force colorized output")
+	flag.Parse()
+
+	if *help {
+		flag.Usage()
+		return
+	}
+
+	if *forceColor {
+		color.ForceColor()
+	}
+
+	if flag.NArg() > 0 {
+		runFile(flag.Arg(0))
 	} else {
 		repl.Start()
 	}

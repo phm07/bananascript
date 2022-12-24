@@ -7,4 +7,3 @@ COPY src ./src
 RUN go build -o /app/bananascript src/main.go
 RUN rm -rf /build
 WORKDIR /app
-CMD ["./bananascript", "src.bs"]
