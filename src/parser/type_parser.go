@@ -76,6 +76,8 @@ func (parser *Parser) parseTypeLiteral(context *types.Context) types.Type {
 			return &types.Bool{}
 		case types.TypeInt:
 			return &types.Int{}
+		case types.TypeFloat:
+			return &types.Float{}
 		default:
 			theType, ok := context.GetType(typeName)
 			if !ok {

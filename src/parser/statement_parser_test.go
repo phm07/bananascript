@@ -94,7 +94,7 @@ func parse(input string) *Parser {
 
 func assertError(t *testing.T, input string) {
 	theParser := parse(input)
-	assert.Assert(t, len(theParser.errors) > 0)
+	assert.Assert(t, len(theParser.errors) > 0, input)
 }
 
 func assertNoError(t *testing.T, input string) {

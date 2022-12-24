@@ -25,6 +25,8 @@ func (parser *Parser) getExpressionType(expression Expression, context *types.Co
 		return &types.String{}
 	case *IntegerLiteral:
 		return &types.Int{}
+	case *FloatLiteral:
+		return &types.Float{}
 	case *BooleanLiteral:
 		return &types.Bool{}
 	case *NullLiteral:
@@ -61,6 +63,8 @@ func (parser *Parser) getPrefixExpressionType(prefixExpression *PrefixExpression
 		switch currentType.(type) {
 		case *types.Int:
 			return &types.Int{}
+		case *types.Float:
+			return &types.Float{}
 		}
 	}
 
@@ -75,22 +79,37 @@ func (parser *Parser) getInfixExpressionType(infixExpression *InfixExpression, c
 		return &types.Never{}
 	}
 
+	_, leftIsInt := leftType.(*types.Int)
+	_, leftIsFloat := leftType.(*types.Float)
+	_, leftIsString := leftType.(*types.String)
+	_, rightIsInt := rightType.(*types.Int)
+	_, rightIsFloat := rightType.(*types.Float)
+	_, rightIsString := rightType.(*types.String)
+
 	switch infixExpression.Operator {
 	case token.EQ, token.NEQ, token.LogicalOr, token.LogicalAnd:
 		return &types.Bool{}
 	case token.LT, token.GT, token.LTE, token.GTE:
-		if leftType.ToString() == types.TypeInt && rightType.ToString() == types.TypeInt {
+		if (leftIsInt || leftIsFloat) && (rightIsInt || rightIsFloat) {
 			return &types.Bool{}
 		}
 	case token.Plus:
-		if leftType.ToString() == types.TypeString || rightType.ToString() == types.TypeString {
+		if leftIsString || rightIsString {
 			return &types.String{}
-		} else if leftType.ToString() == types.TypeInt && rightType.ToString() == types.TypeInt {
-			return &types.Int{}
+		} else if (leftIsInt || leftIsFloat) && (rightIsInt || rightIsFloat) {
+			if leftIsInt && rightIsInt {
+				return &types.Int{}
+			} else {
+				return &types.Float{}
+			}
 		}
 	case token.Minus, token.Slash, token.Star:
-		if leftType.ToString() == types.TypeInt && rightType.ToString() == types.TypeInt {
-			return &types.Int{}
+		if (leftIsInt || leftIsFloat) && (rightIsInt || rightIsFloat) {
+			if leftIsInt && rightIsInt {
+				return &types.Int{}
+			} else {
+				return &types.Float{}
+			}
 		}
 	}
 
@@ -145,7 +164,7 @@ func (parser *Parser) getCallExpressionType(callExpression *CallExpression, cont
 func (parser *Parser) getIncrementExpressionType(incrementExpression *IncrementExpression, context *types.Context) types.Type {
 	identType := parser.getExpressionType(incrementExpression.Name, context)
 	switch identType.(type) {
-	case *types.Never, *types.Int:
+	case *types.Never, *types.Int, *types.Float:
 		return identType
 	default:
 		parser.error(incrementExpression.OperatorToken, "Unknown operator: %s%s",

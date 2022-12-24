@@ -17,6 +17,8 @@ func Eval(node parser.Node, environment *Environment) Object {
 		return &StringObject{Value: node.Value}
 	case *parser.IntegerLiteral:
 		return &IntegerObject{Value: node.Value}
+	case *parser.FloatLiteral:
+		return &FloatObject{Value: node.Value}
 	case *parser.BooleanLiteral:
 		return &BooleanObject{Value: node.Value}
 	case *parser.NullLiteral:
@@ -78,9 +80,11 @@ func evalPrefixExpression(prefixExpression *parser.PrefixExpression, environment
 	case token.Bang:
 		return &BooleanObject{Value: !implicitBoolConversion(object)}
 	case token.Minus:
-		intValue, ok := intConversion(object)
-		if ok {
-			return &IntegerObject{Value: -intValue}
+		switch object := object.(type) {
+		case *IntegerObject:
+			return &IntegerObject{Value: -object.Value}
+		case *FloatObject:
+			return &FloatObject{Value: -object.Value}
 		}
 	}
 
@@ -113,62 +117,85 @@ func evalInfixExpression(infixExpression *parser.InfixExpression, environment *E
 	case token.NEQ:
 		return &BooleanObject{Value: !evalEquals(leftObject, rightObject)}
 	case token.LT:
-		return evalIntegerInfix(leftObject, rightObject,
-			func(left int64, right int64) Object { return &BooleanObject{Value: left < right} })
+		return evalNumericInfix(
+			leftObject, rightObject,
+			func(left int64, right int64) Object { return &BooleanObject{Value: left < right} },
+			func(left float64, right float64) Object { return &BooleanObject{Value: left < right} },
+		)
 	case token.GT:
-		return evalIntegerInfix(leftObject, rightObject,
-			func(left int64, right int64) Object { return &BooleanObject{Value: left > right} })
+		return evalNumericInfix(
+			leftObject, rightObject,
+			func(left int64, right int64) Object { return &BooleanObject{Value: left > right} },
+			func(left float64, right float64) Object { return &BooleanObject{Value: left > right} },
+		)
 	case token.LTE:
-		return evalIntegerInfix(leftObject, rightObject,
-			func(left int64, right int64) Object { return &BooleanObject{Value: left <= right} })
+		return evalNumericInfix(
+			leftObject, rightObject,
+			func(left int64, right int64) Object { return &BooleanObject{Value: left <= right} },
+			func(left float64, right float64) Object { return &BooleanObject{Value: left <= right} },
+		)
 	case token.GTE:
-		return evalIntegerInfix(leftObject, rightObject,
-			func(left int64, right int64) Object { return &BooleanObject{Value: left >= right} })
+		return evalNumericInfix(
+			leftObject, rightObject,
+			func(left int64, right int64) Object { return &BooleanObject{Value: left >= right} },
+			func(left float64, right float64) Object { return &BooleanObject{Value: left >= right} },
+		)
 	case token.Plus:
 		_, leftIsString := leftObject.(*StringObject)
 		_, rightIsString := rightObject.(*StringObject)
 		if leftIsString || rightIsString {
 			return &StringObject{Value: leftObject.ToString() + rightObject.ToString()}
 		}
-		return evalIntegerInfix(leftObject, rightObject,
-			func(left int64, right int64) Object { return &IntegerObject{Value: left + right} })
+		return evalNumericInfix(
+			leftObject, rightObject,
+			func(left int64, right int64) Object { return &IntegerObject{Value: left + right} },
+			func(left float64, right float64) Object { return &FloatObject{Value: left + right} },
+		)
 	case token.Minus:
-		return evalIntegerInfix(leftObject, rightObject,
-			func(left int64, right int64) Object { return &IntegerObject{Value: left - right} })
+		return evalNumericInfix(
+			leftObject, rightObject,
+			func(left int64, right int64) Object { return &IntegerObject{Value: left - right} },
+			func(left float64, right float64) Object { return &FloatObject{Value: left - right} },
+		)
 	case token.Slash:
-		return evalIntegerInfix(leftObject, rightObject,
-			func(left int64, right int64) Object { return &IntegerObject{Value: left / right} })
+		return evalNumericInfix(
+			leftObject, rightObject,
+			func(left int64, right int64) Object { return &IntegerObject{Value: left / right} },
+			func(left float64, right float64) Object { return &FloatObject{Value: left / right} },
+		)
 	case token.Star:
-		return evalIntegerInfix(leftObject, rightObject,
-			func(left int64, right int64) Object { return &IntegerObject{Value: left * right} })
+		return evalNumericInfix(
+			leftObject, rightObject,
+			func(left int64, right int64) Object { return &IntegerObject{Value: left * right} },
+			func(left float64, right float64) Object { return &FloatObject{Value: left * right} },
+		)
 	default:
 		return NewError("Unknown infix operator")
 	}
 }
 
 func evalEquals(left Object, right Object) bool {
-	if reflect.TypeOf(left) != reflect.TypeOf(right) {
-		return false
-	}
-	switch left := left.(type) {
-	case *BooleanObject:
-		return left.Value == right.(*BooleanObject).Value
-	case *IntegerObject:
-		return left.Value == right.(*IntegerObject).Value
-	case *StringObject:
-		return left.Value == right.(*StringObject).Value
-	default:
-		return left == right
-	}
+	return reflect.DeepEqual(left, right)
 }
 
-func evalIntegerInfix(left Object, right Object, constructor func(left int64, right int64) Object) Object {
-	leftInt, leftOk := intConversion(left)
-	rightInt, rightOk := intConversion(right)
-	if !rightOk || !leftOk {
-		return NewError("Implicit conversion to int not possible")
+func evalNumericInfix(left Object, right Object, intConstructor func(left int64, right int64) Object, floatConstructor func(left float64, right float64) Object) Object {
+	switch left := left.(type) {
+	case *IntegerObject:
+		switch right := right.(type) {
+		case *IntegerObject:
+			return intConstructor(left.Value, right.Value)
+		case *FloatObject:
+			return floatConstructor(float64(left.Value), right.Value)
+		}
+	case *FloatObject:
+		switch right := right.(type) {
+		case *IntegerObject:
+			return floatConstructor(left.Value, float64(right.Value))
+		case *FloatObject:
+			return floatConstructor(left.Value, right.Value)
+		}
 	}
-	return constructor(leftInt, rightInt)
+	return NewError("Invalid infix operator")
 }
 
 func evalAssignmentExpression(assignmentExpression *parser.AssignmentExpression, environment *Environment) Object {
@@ -324,7 +351,8 @@ func evalIncrementExpression(incrementExpression *parser.IncrementExpression, en
 		return NewError("Cannot resolve identifier")
 	}
 
-	if object, ok := object.(*IntegerObject); ok {
+	switch object := object.(type) {
+	case *IntegerObject:
 		oldValue := object.Value
 		if incrementExpression.Operator == token.Increment {
 			object.Value++
@@ -336,9 +364,21 @@ func evalIncrementExpression(incrementExpression *parser.IncrementExpression, en
 		} else {
 			return &IntegerObject{Value: oldValue}
 		}
-	} else {
-		return NewError("Cannot increment non-int")
+	case *FloatObject:
+		oldValue := object.Value
+		if incrementExpression.Operator == token.Increment {
+			object.Value++
+		} else {
+			object.Value--
+		}
+		if incrementExpression.Pre {
+			return object
+		} else {
+			return &FloatObject{Value: oldValue}
+		}
 	}
+
+	return NewError("Cannot increment non-int")
 }
 
 func evalMemberAccessExpression(memberAccessExpression *parser.MemberAccessExpression, environment *Environment) Object {
@@ -367,19 +407,12 @@ func implicitBoolConversion(object Object) bool {
 		return object.Value
 	case *IntegerObject:
 		return object.Value != 0
+	case *FloatObject:
+		return object.Value != 0
 	case *StringObject:
 		return len(object.Value) != 0
 	default:
 		return true
-	}
-}
-
-func intConversion(object Object) (int64, bool) {
-	switch object := object.(type) {
-	case *IntegerObject:
-		return object.Value, true
-	default:
-		return 0, false
 	}
 }
 

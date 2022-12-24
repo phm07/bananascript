@@ -14,10 +14,12 @@ func TestTypeParser(t *testing.T) {
 	assertType(t, "int", &types.Int{})
 	assertType(t, "null", &types.Null{})
 	assertType(t, "void", &types.Void{})
+	assertType(t, "float", &types.Float{})
 	assertType(t, "doesNotExist", &types.Never{})
 
 	assertType(t, "string?", &types.Optional{Base: &types.String{}})
 	assertType(t, "int?", &types.Optional{Base: &types.Int{}})
+	assertType(t, "float?", &types.Optional{Base: &types.Float{}})
 	assertType(t, "bool????", &types.Optional{Base: &types.Bool{}})
 
 	assertType(t,

@@ -175,12 +175,23 @@ func (lexer *Lexer) NextToken() *token.Token {
 
 	} else if isDigit(char) {
 		start := lexer.position - 1
+		isFloat := false
 		for isDigit(lexer.current()) {
 			lexer.consume()
 		}
-		integer := string(lexer.input[start:lexer.position])
-		return lexer.newToken(token.IntLiteral, integer, startCol)
-
+		if lexer.current() == '.' {
+			isFloat = true
+			lexer.consume()
+			for isDigit(lexer.current()) {
+				lexer.consume()
+			}
+		}
+		literal := string(lexer.input[start:lexer.position])
+		if isFloat {
+			return lexer.newToken(token.FloatLiteral, literal, startCol)
+		} else {
+			return lexer.newToken(token.IntLiteral, literal, startCol)
+		}
 	} else {
 		if !lexer.lastWasIllegal {
 			lexer.error(startCol, "Illegal token")

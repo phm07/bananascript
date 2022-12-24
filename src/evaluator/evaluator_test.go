@@ -16,6 +16,11 @@ func TestEvaluator(t *testing.T) {
 	)
 
 	assertObject(t,
+		"5. + 5;",
+		&FloatObject{Value: 10},
+	)
+
+	assertObject(t,
 		"\"a\" + \"b\";",
 		&StringObject{Value: "ab"},
 	)

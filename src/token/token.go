@@ -20,6 +20,7 @@ const (
 
 	Ident
 	IntLiteral
+	FloatLiteral
 	StringLiteral
 
 	EQ
@@ -100,6 +101,7 @@ func (tokenType Type) ToString() string {
 		"EOF",
 		"IDENT",
 		"INT_LITERAL",
+		"FLOAT_LITERAL",
 		"STRING_LITERAL",
 		"==",
 		"!=",
@@ -152,6 +154,7 @@ func (tokenType Type) ToStringHumanReadable() string {
 		"EOF",
 		"identifier",
 		"integer literal",
+		"float literal",
 		"string literal",
 		"'=='",
 		"'!='",

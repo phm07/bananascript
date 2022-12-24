@@ -272,7 +272,7 @@ func (parser *Parser) parseTypeDefinitionStatement(context *types.Context) *Type
 	statement.Type = parser.parseType(context, TypeLowest)
 
 	switch name {
-	case types.TypeNull, types.TypeVoid, types.TypeString, types.TypeInt, types.TypeBool:
+	case types.TypeNull, types.TypeVoid, types.TypeString, types.TypeInt, types.TypeFloat, types.TypeBool:
 		parser.error(identToken, "Cannot re-declare primitive '%s'", name)
 	default:
 		if _, ok := context.DefineType(name, statement.Type); !ok {

@@ -105,6 +105,18 @@ func (*IntegerObject) Type() types.Type {
 	return &types.Int{}
 }
 
+type FloatObject struct {
+	Value float64
+}
+
+func (floatObject *FloatObject) ToString() string {
+	return strconv.FormatFloat(floatObject.Value, 'f', -1, 64)
+}
+
+func (*FloatObject) Type() types.Type {
+	return &types.Float{}
+}
+
 type BooleanObject struct {
 	Value bool
 }

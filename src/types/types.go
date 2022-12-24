@@ -6,6 +6,7 @@ const (
 	TypeVoid   = "void"
 	TypeString = "string"
 	TypeInt    = "int"
+	TypeFloat  = "float"
 	TypeBool   = "bool"
 )
 
@@ -59,6 +60,18 @@ func (integerType *Int) ToString() string {
 func (integerType *Int) IsAssignable(other Type, _ *Context) bool {
 	_, isInt := other.(*Int)
 	return isInt
+}
+
+type Float struct {
+}
+
+func (floatType *Float) ToString() string {
+	return TypeFloat
+}
+
+func (floatType *Float) IsAssignable(other Type, _ *Context) bool {
+	_, isFloat := other.(*Float)
+	return isFloat
 }
 
 type Bool struct {

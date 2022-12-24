@@ -177,6 +177,19 @@ func (integerLiteral *IntegerLiteral) ToString() string {
 	return strconv.FormatInt(integerLiteral.Value, 10)
 }
 
+type FloatLiteral struct {
+	LiteralToken *token.Token
+	Value        float64
+}
+
+func (floatLiteral *FloatLiteral) Token() *token.Token {
+	return floatLiteral.LiteralToken
+}
+
+func (floatLiteral *FloatLiteral) ToString() string {
+	return strconv.FormatFloat(floatLiteral.Value, 'f', -1, 64)
+}
+
 type BooleanLiteral struct {
 	LiteralToken *token.Token
 	Value        bool

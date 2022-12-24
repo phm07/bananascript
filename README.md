@@ -92,6 +92,7 @@ fn sayHello(x: myInterface) {
 ```
 type string := string;
 type int := int;
+type float := float;
 type bool := bool;
 type any := iface { };
 
@@ -108,5 +109,10 @@ fn (string)::lowercase() string; // Transform string to lowercase
 fn (string)::length() int;       // Returns string length
 fn (string)::parseInt() int;     // Parses int from string
 
-fn (int)::abs() int;         // Returns absolute value
+fn (int)::abs() int; // Returns absolute value
+
+fn (float)::abs() float;   // Returns absolute value
+fn (float)::ceil() float;  // Rounds value up
+fn (float)::floor() float; // Rounds value down
+fn (float)::round() float; // Rounds value
 ```

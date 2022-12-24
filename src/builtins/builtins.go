@@ -4,6 +4,7 @@ import (
 	"bananascript/src/evaluator"
 	"bananascript/src/types"
 	"fmt"
+	"math"
 	"strconv"
 	"strings"
 )
@@ -131,6 +132,44 @@ var builtinObjects = map[types.Type]map[string]evaluator.Object{
 					value *= -1
 				}
 				return &evaluator.IntegerObject{Value: value}
+			},
+		},
+	},
+	&types.Float{}: {
+		"abs": &BuiltinFunction{
+			FunctionType: &types.Function{
+				ParameterTypes: []types.Type{},
+				ReturnType:     &types.Float{},
+			},
+			Executor: func(this evaluator.Object, _ []evaluator.Object) evaluator.Object {
+				return &evaluator.FloatObject{Value: math.Abs(this.(*evaluator.FloatObject).Value)}
+			},
+		},
+		"floor": &BuiltinFunction{
+			FunctionType: &types.Function{
+				ParameterTypes: []types.Type{},
+				ReturnType:     &types.Float{},
+			},
+			Executor: func(this evaluator.Object, _ []evaluator.Object) evaluator.Object {
+				return &evaluator.FloatObject{Value: math.Floor(this.(*evaluator.FloatObject).Value)}
+			},
+		},
+		"ceil": &BuiltinFunction{
+			FunctionType: &types.Function{
+				ParameterTypes: []types.Type{},
+				ReturnType:     &types.Float{},
+			},
+			Executor: func(this evaluator.Object, _ []evaluator.Object) evaluator.Object {
+				return &evaluator.FloatObject{Value: math.Ceil(this.(*evaluator.FloatObject).Value)}
+			},
+		},
+		"round": &BuiltinFunction{
+			FunctionType: &types.Function{
+				ParameterTypes: []types.Type{},
+				ReturnType:     &types.Float{},
+			},
+			Executor: func(this evaluator.Object, _ []evaluator.Object) evaluator.Object {
+				return &evaluator.FloatObject{Value: math.Round(this.(*evaluator.FloatObject).Value)}
 			},
 		},
 	},

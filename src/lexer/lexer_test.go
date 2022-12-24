@@ -20,6 +20,11 @@ func TestLexer(t *testing.T) {
 	)
 
 	assertTypes(t,
+		"0.5 11 5.",
+		[]token.Type{token.FloatLiteral, token.IntLiteral, token.FloatLiteral},
+	)
+
+	assertTypes(t,
 		"fn test(x: string) string { return \"test \" + x; }",
 		[]token.Type{token.Func, token.Ident, token.LParen, token.Ident, token.Colon, token.Ident, token.RParen, token.Ident,
 			token.LBrace, token.Return, token.StringLiteral, token.Plus, token.Ident, token.Semi, token.RBrace},

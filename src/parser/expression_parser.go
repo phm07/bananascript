@@ -54,6 +54,7 @@ func getExpressionPrecedence(token *token.Token) ExpressionPrecedence {
 func (parser *Parser) registerExpressionParseFunctions() {
 	prefixExpressionParseFunctions[token.Ident] = parser.parseIdentifier
 	prefixExpressionParseFunctions[token.IntLiteral] = parser.parseIntegerLiteral
+	prefixExpressionParseFunctions[token.FloatLiteral] = parser.parseFloatLiteral
 	prefixExpressionParseFunctions[token.StringLiteral] = parser.parseStringLiteral
 	prefixExpressionParseFunctions[token.Null] = parser.parseNullLiteral
 	prefixExpressionParseFunctions[token.Void] = parser.parseVoidLiteral
@@ -149,6 +150,20 @@ func (parser *Parser) parseIntegerLiteral(*types.Context) Expression {
 	value, err := strconv.ParseInt(currentToken.Literal, 10, 64)
 	if err != nil {
 		parser.error(currentToken, "Integer out of bounds")
+		return &InvalidExpression{currentToken}
+	}
+
+	literal.Value = value
+	return literal
+}
+
+func (parser *Parser) parseFloatLiteral(*types.Context) Expression {
+	currentToken := parser.current()
+	literal := &FloatLiteral{LiteralToken: currentToken}
+
+	value, err := strconv.ParseFloat(currentToken.Literal, 64)
+	if err != nil {
+		parser.error(currentToken, "Float out of bounds")
 		return &InvalidExpression{currentToken}
 	}
 
