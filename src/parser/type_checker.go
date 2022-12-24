@@ -105,7 +105,7 @@ func (parser *Parser) getAssignmentExpressionType(assignmentExpression *Assignme
 		return &types.Never{}
 	}
 
-	if !rightType.IsAssignable(leftType, context) {
+	if !leftType.IsAssignable(rightType, context) {
 		parser.error(assignmentExpression.AssignToken, "Type '%s' is not assignable to '%s'",
 			rightType.ToString(), leftType.ToString())
 		return &types.Never{}
