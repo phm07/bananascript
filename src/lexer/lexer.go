@@ -194,8 +194,8 @@ func (lexer *Lexer) parseString(stringStartCol int) *token.Token {
 
 parseChar:
 	for {
-		startCol := lexer.position
 		current := lexer.consume()
+		startCol := lexer.col
 		if current == '"' || current == '\n' || current == 0 {
 			if current == '\n' || current == 0 {
 				lexer.error(startCol+1, "Unclosed string literal")
