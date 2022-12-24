@@ -45,6 +45,6 @@ func assertObject(t *testing.T, input string, expected Object) {
 			t.Error(err.Message)
 		}
 	} else {
-		assert.DeepEqual(t, Eval(program, environment), expected)
+		assert.DeepEqual(t, Eval(program.Statements[0], environment), expected)
 	}
 }
