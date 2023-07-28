@@ -5,7 +5,7 @@ It was inspired by the Monkey language and its [original interpreter](https://in
 
 ## Playground
 
-Check the language out in the [BananaScript Playground](https://playground.pauhull.de/).
+Check the language out in the [BananaScript Playground](https://bananascript.pauhull.de/).
 
 ## Builds
 Pre-built binaries are available [here](https://builds.pauhull.de).
