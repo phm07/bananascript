@@ -5,7 +5,6 @@ build:
 
 wasm:
 	GOOS=js GOARCH=wasm go build -o bananascript.wasm ./cmd/wasm
-	cp "$$(go env GOROOT)/misc/wasm/wasm_exec.js" .
 
 test:
 	go test ./...
